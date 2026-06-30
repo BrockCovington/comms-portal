@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@theme {
+  /* Surfaces */
+  --color-sidebar: #1b2030;
+  --color-sidebar-hover: #2a3145;
+  --color-sidebar-active: #3a4566;
+  --color-canvas: #ffffff;
+  --color-rail: #f4f5f8;
+
+  /* Brand accent — deliberately not Slack's aubergine */
+  --color-accent: #4f5bd5;
+  --color-accent-soft: #eef0fb;
+
+  /* Text */
+  --color-ink: #1a1d29;
+  --color-ink-soft: #5b6072;
+  --color-on-sidebar: #c7ccda;
+  --color-on-sidebar-dim: #8a92a8;
+
+  /* Lines */
+  --color-line: #e6e8ef;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}

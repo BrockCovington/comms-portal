@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// NextAuth / Auth.js adapter models (database session strategy).
+// Shapes below match @auth/prisma-adapter. Don't rename these fields.
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+
+  accounts        Account[]
+  sessions        Session[]
+  memberships     ChannelMember[]
+  messages        Message[]
+  createdChannels Channel[]       @relation("ChannelCreator")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// Chat domain models
+// ---------------------------------------------------------------------------
+
+model Channel {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isPrivate   Boolean  @default(false) // private channels require membership
+  isDm        Boolean  @default(false) // direct messages between members
+  createdAt   DateTime @default(now())
+
+  createdById String?
+  createdBy   User?    @relation("ChannelCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  members  ChannelMember[]
+  messages Message[]
+
+  @@index([isPrivate, isDm])
+}
+
+model ChannelMember {
+  id        String   @id @default(cuid())
+  channelId String
+  userId    String
+  joinedAt  DateTime @default(now())
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  channelId String
+  userId    String
+  // Stored as AES-256-GCM ciphertext ("iv:tag:ciphertext", all base64).
+  // Never store plaintext message bodies here.
+  body      String
+  createdAt DateTime @default(now())
+  editedAt  DateTime?
+
+  // Threading: a reply points at its parent message.
+  parentId String?
+  parent   Message?  @relation("Thread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Message[] @relation("Thread")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([channelId, createdAt])
+  @@index([parentId])
+}
