@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { getPusherClient } from "@/lib/pusherClient";
 
 export type ChatMessage = {
   id: string;
@@ -11,27 +12,22 @@ export type ChatMessage = {
 };
 
 // ---------------------------------------------------------------------------
-// Live updates — PLACEHOLDER IMPLEMENTATION.
+// Live updates via Pusher (real-time).
 //
-// This polls the server every few seconds. It works everywhere with zero extra
-// services, which is great for getting started. It is NOT true real-time: there
-// is a few-seconds delay and it generates steady background requests.
+// On mount we load the recent history once, then subscribe to this channel's
+// private Pusher channel and append messages as they arrive. No more polling.
 //
-// To upgrade to instant delivery, swap the polling below for a managed
-// real-time provider (Pusher, Ably, or Supabase Realtime). Vercel's serverless
-// runtime can't host a long-lived WebSocket server itself, which is why a
-// managed provider is the standard path here. The component API (messages,
-// sendMessage, refresh) can stay the same.
+// Subscriptions are authorized server-side in /api/pusher/auth using the same
+// access check as the REST API, so you can only receive messages from channels
+// you're allowed to read.
 // ---------------------------------------------------------------------------
-
-const POLL_INTERVAL_MS = 4000;
 
 export function useMessages(channelId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Load existing history once.
   const refresh = useCallback(async () => {
     try {
       const res = await fetch(`/api/channels/${channelId}/messages`, {
@@ -54,11 +50,27 @@ export function useMessages(channelId: string) {
   useEffect(() => {
     setLoading(true);
     refresh();
-    timer.current = setInterval(refresh, POLL_INTERVAL_MS);
-    return () => {
-      if (timer.current) clearInterval(timer.current);
+
+    const pusher = getPusherClient();
+    const channelName = `private-channel-${channelId}`;
+    const channel = pusher.subscribe(channelName);
+
+    const onNewMessage = (payload: { message: ChatMessage }) => {
+      setMessages((prev) => {
+        // Dedupe: the sender already appended optimistically, and Pusher
+        // delivers to everyone including the sender.
+        if (prev.some((m) => m.id === payload.message.id)) return prev;
+        return [...prev, payload.message];
+      });
     };
-  }, [refresh]);
+
+    channel.bind("new-message", onNewMessage);
+
+    return () => {
+      channel.unbind("new-message", onNewMessage);
+      pusher.unsubscribe(channelName);
+    };
+  }, [channelId, refresh]);
 
   const sendMessage = useCallback(
     async (body: string) => {
@@ -72,8 +84,11 @@ export function useMessages(channelId: string) {
         throw new Error(data.error ?? "Couldn't send message");
       }
       const data = await res.json();
-      // Optimistically append; the next poll reconciles with the server.
-      setMessages((prev) => [...prev, data.message as ChatMessage]);
+      // Optimistic append; the broadcast handler dedupes by id.
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === data.message.id)) return prev;
+        return [...prev, data.message as ChatMessage];
+      });
     },
     [channelId]
   );

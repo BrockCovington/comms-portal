@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUserId, checkChannelAccess } from "@/lib/authz";
 import { postMessageSchema } from "@/lib/validation";
 import { encryptMessage, decryptMessage } from "@/lib/crypto";
+import { pusherServer, pusherChannelName } from "@/lib/pusher";
 
 type RouteContext = { params: Promise<{ channelId: string }> };
 
@@ -76,9 +77,22 @@ export async function POST(request: Request, { params }: RouteContext) {
     },
   });
 
+  const message = { ...created, body: parsed.data.body };
+
+  // Broadcast to everyone currently viewing this channel. Only subscribers who
+  // passed the auth check in /api/pusher/auth are on this private channel.
+  // Note: message text is relayed through Pusher (over TLS). It is the same
+  // trust model as the rest of the app (not end-to-end encrypted).
+  try {
+    await pusherServer.trigger(pusherChannelName(channelId), "new-message", {
+      message,
+    });
+  } catch (err) {
+    // A failed broadcast shouldn't fail the send — the message is already
+    // saved, and other clients will still see it on their next load.
+    console.error("Pusher broadcast failed:", err);
+  }
+
   // Return the plaintext we just stored (don't round-trip through the DB).
-  return NextResponse.json(
-    { message: { ...created, body: parsed.data.body } },
-    { status: 201 }
-  );
+  return NextResponse.json({ message }, { status: 201 });
 }
