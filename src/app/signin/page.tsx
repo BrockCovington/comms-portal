@@ -10,9 +10,8 @@ export default async function SignInPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--color-rail)] p-6">
       <div className="w-full max-w-sm rounded-2xl border border-[var(--color-line)] bg-white p-8 shadow-sm">
-        <div className="mb-6 flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-accent)] text-lg font-semibold text-white">
-          {workspace.charAt(0).toUpperCase()}
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/syndica-logo.svg" alt="Syndica" className="mb-6 h-8 w-auto" />
         <h1 className="text-xl font-semibold text-[var(--color-ink)]">
           Sign in to {workspace}
         </h1>

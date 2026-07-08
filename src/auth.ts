@@ -5,6 +5,15 @@ import { prisma } from "@/lib/prisma";
 
 const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN?.toLowerCase();
 
+// Emails that should land as ADMIN the moment they first sign in, before
+// their User row even exists. Comma-separated, case-insensitive.
+const AUTO_ADMIN_EMAILS = new Set(
+  (process.env.AUTO_ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+);
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   // Database sessions are revocable (delete the Session row to kill a session).
@@ -50,8 +59,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return emailDomainOk && hdOk;
     },
     async session({ session, user }) {
-      if (session.user) session.user.id = user.id;
+      if (session.user) {
+        session.user.id = user.id;
+        session.user.role = user.role;
+      }
       return session;
+    },
+  },
+  events: {
+    // Fires exactly once, right after the adapter inserts a brand-new User
+    // row on someone's very first successful sign-in (already past the
+    // domain-lock check above). No pre-created rows involved — pre-creating
+    // a User with this email ahead of time would risk NextAuth's
+    // OAuthAccountNotLinked error on their actual first Google sign-in.
+    async createUser({ user }) {
+      if (user.email && AUTO_ADMIN_EMAILS.has(user.email.toLowerCase())) {
+        await prisma.user.update({ where: { id: user.id }, data: { role: "ADMIN" } });
+      }
     },
   },
 });

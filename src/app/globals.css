@@ -1,25 +1,26 @@
 @import "tailwindcss";
 
 @theme {
-  /* Surfaces */
-  --color-sidebar: #1b2030;
-  --color-sidebar-hover: #2a3145;
-  --color-sidebar-active: #3a4566;
+  /* Surfaces — Syndica brand navy, flat (per the 2025 brand style sheet,
+     not a gradient — replaces the earlier Slack-style purple). */
+  --color-sidebar: #040e37;
+  --color-sidebar-active: #3675f8;
+  --color-nav-rail: #040e37;
   --color-canvas: #ffffff;
-  --color-rail: #f4f5f8;
+  --color-rail: #e8e8eb;
 
-  /* Brand accent — deliberately not Slack's aubergine */
-  --color-accent: #4f5bd5;
-  --color-accent-soft: #eef0fb;
+  /* Brand accent — Syndica Blue */
+  --color-accent: #3675f8;
+  --color-accent-soft: #e8f0fe;
 
   /* Text */
-  --color-ink: #1a1d29;
-  --color-ink-soft: #5b6072;
-  --color-on-sidebar: #c7ccda;
-  --color-on-sidebar-dim: #8a92a8;
+  --color-ink: #040e37;
+  --color-ink-soft: #84848a;
+  --color-on-sidebar: #ffffff;
+  --color-on-sidebar-dim: #7c86ad;
 
   /* Lines */
-  --color-line: #e6e8ef;
+  --color-line: #e8e8eb;
 }
 
 html,

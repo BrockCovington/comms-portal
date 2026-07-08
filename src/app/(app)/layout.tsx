@@ -1,7 +1,16 @@
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
-import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/Sidebar";
+import { AppShell } from "@/components/AppShell";
+import { TopBar } from "@/components/TopBar";
+import { IconRail } from "@/components/IconRail";
+import { NotificationToasts } from "@/components/NotificationToasts";
+import { getChannelsWithUnread } from "@/lib/channels";
+import { getDmThreadsForUser } from "@/lib/dms";
+import { getThreadsForUser } from "@/lib/threads";
+import { getSavedMessagesForUser } from "@/lib/saved";
+import { getDraftsForUser } from "@/lib/drafts";
+import { getFilesForUser } from "@/lib/files";
 
 export default async function AppLayout({
   children,
@@ -13,17 +22,18 @@ export default async function AppLayout({
   if (!session?.user?.id) redirect("/signin");
 
   const userId = session.user.id;
-
-  const channels = await prisma.channel.findMany({
-    where: {
-      OR: [
-        { isPrivate: false, isDm: false },
-        { members: { some: { userId } } },
-      ],
-    },
-    select: { id: true, name: true, isPrivate: true, isDm: true },
-    orderBy: [{ isDm: "asc" }, { name: "asc" }],
-  });
+  const [channelsWithUnread, dmThreads, threads, savedMessages, drafts, files] = await Promise.all([
+    getChannelsWithUnread(userId),
+    getDmThreadsForUser(userId),
+    getThreadsForUser(userId),
+    getSavedMessagesForUser(userId),
+    getDraftsForUser(userId),
+    getFilesForUser(userId),
+  ]);
+  const user = {
+    name: session.user.name ?? session.user.email ?? "You",
+    image: session.user.image ?? null,
+  };
 
   async function handleSignOut() {
     "use server";
@@ -31,19 +41,32 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
-      <Sidebar
-        channels={channels}
-        user={{
-          name: session.user.name ?? session.user.email ?? "You",
-          image: session.user.image ?? null,
-        }}
-        workspaceName={process.env.NEXT_PUBLIC_WORKSPACE_NAME ?? "Workspace"}
-        signOutAction={handleSignOut}
-      />
-      <main className="flex min-w-0 flex-1 flex-col bg-[var(--color-canvas)]">
+    <>
+      <AppShell
+        topBar={<TopBar user={user} />}
+        rail={
+          <IconRail
+            workspaceName={process.env.NEXT_PUBLIC_WORKSPACE_NAME ?? "Workspace"}
+            currentUserId={userId}
+            user={user}
+            signOutAction={handleSignOut}
+          />
+        }
+        sidebar={
+          <Sidebar
+            channels={channelsWithUnread}
+            dmThreads={dmThreads}
+            threads={threads}
+            savedMessages={savedMessages}
+            drafts={drafts}
+            files={files}
+            currentUserId={userId}
+          />
+        }
+      >
         {children}
-      </main>
-    </div>
+      </AppShell>
+      <NotificationToasts currentUserId={userId} />
+    </>
   );
 }

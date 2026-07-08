@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
-import { getCurrentUserId, checkChannelAccess } from "@/lib/authz";
+import { auth } from "@/auth";
+import { checkChannelAccess } from "@/lib/authz";
+import { prisma } from "@/lib/prisma";
+import { otherMemberLabel } from "@/lib/dm";
 import { ChannelView } from "@/components/ChannelView";
 
 export default async function ChannelPage({
@@ -8,15 +11,35 @@ export default async function ChannelPage({
   params: Promise<{ channelId: string }>;
 }) {
   const { channelId } = await params;
-  const userId = await getCurrentUserId();
+  const session = await auth();
+  const userId = session?.user?.id ?? null;
 
   const access = await checkChannelAccess(userId, channelId);
   if (!access.ok) notFound();
 
+  let channelName = access.channel.name;
+  if (access.channel.isDm) {
+    const members = await prisma.channelMember.findMany({
+      where: { channelId },
+      select: { userId: true, user: { select: { name: true, email: true } } },
+    });
+    channelName = otherMemberLabel(members, userId!);
+  }
+
+  const starred = await prisma.starredChannel.findUnique({
+    where: { channelId_userId: { channelId, userId: userId! } },
+    select: { id: true },
+  });
+
   return (
     <ChannelView
       channelId={access.channel.id}
-      channelName={access.channel.name}
+      channelName={channelName}
+      isDm={access.channel.isDm}
+      isPrivate={access.channel.isPrivate}
+      isArchived={!!access.channel.archivedAt}
+      isAdmin={session!.user.role === "ADMIN"}
+      isStarred={!!starred}
       currentUserId={userId!}
     />
   );

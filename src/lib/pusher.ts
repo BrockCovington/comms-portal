@@ -17,3 +17,21 @@ export function pusherChannelName(channelId: string): string {
 }
 
 export const PRIVATE_CHANNEL_PREFIX = "private-channel-";
+
+// A presence channel per chat channel — tracks who's currently subscribed
+// (viewing that channel), separately from the private channel used for
+// message/reaction/etc. events. Same access rule as reading the channel.
+export function presenceChannelName(channelId: string): string {
+  return `presence-channel-${channelId}`;
+}
+
+export const PRESENCE_CHANNEL_PREFIX = "presence-channel-";
+
+// A private channel per USER (not per app channel) — for notifications,
+// which need to reach someone regardless of which channel/thread they're
+// currently looking at.
+export function userChannelName(userId: string): string {
+  return `private-user-${userId}`;
+}
+
+export const USER_CHANNEL_PREFIX = "private-user-";

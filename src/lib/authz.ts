@@ -10,8 +10,32 @@ export async function getCurrentUserId(): Promise<string | null> {
   return session?.user?.id ?? null;
 }
 
+/**
+ * Gate for the workspace-wide ADMIN role (see prisma/schema.prisma's Role
+ * enum) — independent of channel membership, unlike checkChannelAccess.
+ * Sessions use the database strategy, so this always reflects the user's
+ * current role, not a stale JWT claim.
+ */
+export async function requireAdmin(): Promise<
+  { ok: true; userId: string } | { ok: false; status: 401 | 403 }
+> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, status: 401 };
+  if (session.user.role !== "ADMIN") return { ok: false, status: 403 };
+  return { ok: true, userId: session.user.id };
+}
+
 export type ChannelAccess =
-  | { ok: true; channel: { id: string; name: string; isPrivate: boolean; isDm: boolean } }
+  | {
+      ok: true;
+      channel: {
+        id: string;
+        name: string;
+        isPrivate: boolean;
+        isDm: boolean;
+        archivedAt: Date | null;
+      };
+    }
   | { ok: false; status: 401 | 403 | 404 };
 
 /**
@@ -31,7 +55,7 @@ export async function checkChannelAccess(
 
   const channel = await prisma.channel.findUnique({
     where: { id: channelId },
-    select: { id: true, name: true, isPrivate: true, isDm: true },
+    select: { id: true, name: true, isPrivate: true, isDm: true, archivedAt: true },
   });
   if (!channel) return { ok: false, status: 404 };
 

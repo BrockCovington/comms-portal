@@ -13,12 +13,18 @@ datasource db {
 // Shapes below match @auth/prisma-adapter. Don't rename these fields.
 // ---------------------------------------------------------------------------
 
+enum Role {
+  EMPLOYEE
+  ADMIN
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
   email         String    @unique
   emailVerified DateTime?
   image         String?
+  role          Role      @default(EMPLOYEE)
   createdAt     DateTime  @default(now())
 
   accounts        Account[]
@@ -26,6 +32,16 @@ model User {
   memberships     ChannelMember[]
   messages        Message[]
   createdChannels Channel[]       @relation("ChannelCreator")
+  channelReads    ChannelRead[]
+  threadReads     ThreadRead[]
+  reactions       Reaction[]
+  attachments     Attachment[]
+
+  notifications           Notification[]
+  triggeredNotifications  Notification[] @relation("NotificationActor")
+  drafts                  Draft[]
+  starredChannels         StarredChannel[]
+  savedMessages           SavedMessage[]
 }
 
 model Account {
@@ -73,13 +89,20 @@ model Channel {
   description String?
   isPrivate   Boolean  @default(false) // private channels require membership
   isDm        Boolean  @default(false) // direct messages between members
+  dmKey       String?  @unique // sorted "userIdA:userIdB", set only for isDm channels
+  archivedAt  DateTime? // null = active; set = frozen (read-only), see /archive route
   createdAt   DateTime @default(now())
 
   createdById String?
   createdBy   User?    @relation("ChannelCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
-  members  ChannelMember[]
-  messages Message[]
+  members       ChannelMember[]
+  messages      Message[]
+  channelReads  ChannelRead[]
+  attachments   Attachment[]
+  notifications Notification[]
+  drafts        Draft[]
+  starredBy     StarredChannel[]
 
   @@index([isPrivate, isDm])
 }
@@ -104,17 +127,167 @@ model Message {
   // Stored as AES-256-GCM ciphertext ("iv:tag:ciphertext", all base64).
   // Never store plaintext message bodies here.
   body      String
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   editedAt  DateTime?
+  deletedAt DateTime? // soft-delete: row stays for thread integrity, body becomes tombstone on render
 
   // Threading: a reply points at its parent message.
   parentId String?
   parent   Message?  @relation("Thread", fields: [parentId], references: [id], onDelete: Cascade)
   replies  Message[] @relation("Thread")
 
-  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel       Channel        @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  threadReads   ThreadRead[]
+  reactions     Reaction[]
+  attachments   Attachment[]
+  notifications Notification[]
+  savedBy       SavedMessage[]
 
   @@index([channelId, createdAt])
   @@index([parentId])
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  channelId    String // known before a message exists, needed for access checks
+  messageId    String? // null until the message that references it is sent
+  uploadedById String
+  url          String // Vercel Blob URL — never sent to the client directly
+  pathname     String // Blob pathname, for future del() support
+  fileName     String
+  mimeType     String
+  size         Int
+  createdAt    DateTime @default(now())
+
+  channel    Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  message    Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  uploadedBy User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
+  @@index([messageId])
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+}
+
+// ---------------------------------------------------------------------------
+// Read-state tracking, for unread indicators. One row per (scope, user).
+// ---------------------------------------------------------------------------
+
+model ChannelRead {
+  id         String   @id @default(cuid())
+  channelId  String
+  userId     String
+  lastReadAt DateTime @default(now())
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@index([userId])
+}
+
+model ThreadRead {
+  id         String   @id @default(cuid())
+  parentId   String
+  userId     String
+  lastReadAt DateTime @default(now())
+
+  parent Message @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, userId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// In-app notifications. No message preview is stored here — bodies are
+// encrypted at rest, so the list endpoint decrypts the referenced Message
+// fresh at read time instead of persisting a second plaintext copy.
+// ---------------------------------------------------------------------------
+
+enum NotificationType {
+  MENTION
+  DM
+  THREAD_REPLY
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String // recipient
+  actorId   String // who triggered it
+  type      NotificationType
+  channelId String
+  messageId String
+  parentId  String? // set for THREAD_REPLY, so the bell can link to the thread without joining Message
+  createdAt DateTime         @default(now())
+  readAt    DateTime?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actor   User    @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Unsent composer text, one per (channel, user) — root-channel composer
+// only, not thread replies (see the visual-overhaul plan's scope note).
+// Encrypted the same way messages are: this is message content that just
+// hasn't been sent yet, so it gets the same at-rest guarantee.
+// ---------------------------------------------------------------------------
+
+model Draft {
+  id        String   @id @default(cuid())
+  channelId String
+  userId    String
+  body      String // AES-256-GCM ciphertext, same shape as Message.body
+  updatedAt DateTime @updatedAt
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@index([userId])
+}
+
+model StarredChannel {
+  id        String   @id @default(cuid())
+  channelId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@index([userId])
+}
+
+// "Later" — a personal flag on any message (root or reply) to come back to,
+// same shape as StarredChannel but scoped to a message instead of a channel.
+model SavedMessage {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId])
 }

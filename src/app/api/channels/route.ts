@@ -8,21 +8,23 @@ export async function GET() {
   const userId = await getCurrentUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // First-run convenience: make sure there's a #general to land in.
+  // First-run convenience: make sure there's a #general to land in. The
+  // triggering user becomes its first member so it isn't immediately
+  // invisible under the membership-based sidebar visibility rule.
   const total = await prisma.channel.count();
   if (total === 0) {
     await prisma.channel.create({
-      data: { name: "general", description: "Company-wide announcements" },
+      data: {
+        name: "general",
+        description: "Company-wide announcements",
+        createdById: userId,
+        members: { create: { userId } },
+      },
     });
   }
 
   const channels = await prisma.channel.findMany({
-    where: {
-      OR: [
-        { isPrivate: false, isDm: false },
-        { members: { some: { userId } } },
-      ],
-    },
+    where: { members: { some: { userId } } },
     select: {
       id: true,
       name: true,
