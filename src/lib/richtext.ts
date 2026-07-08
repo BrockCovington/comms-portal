@@ -1,12 +1,13 @@
 import { splitMentions } from "@/lib/mentions";
+import { findEmoji } from "@/lib/emoji";
 
 // Layered on top of splitMentions rather than replacing it — mentions are
 // resolved first (against real member names, exactly as MessageRow already
 // does), then each non-mention run is scanned for inline formatting. This
 // keeps existing @mention highlighting untouched; richtext.ts only adds to
 // it. Scoped narrowly to what's visible in the reference screenshot: bold,
-// italic, inline code, and bullet lists — no tables, headers, or
-// markdown-style links.
+// italic, inline code, bullet lists, and :shortcode: emoji — no tables,
+// headers, or markdown-style links.
 
 export type RichSegment =
   | { kind: "text"; text: string }
@@ -20,8 +21,12 @@ export type RichBlock =
   | { type: "bullet"; items: RichSegment[][] };
 
 // Order matters: "**bold**" must be checked before "*italic*" so a bold
-// run isn't misread as two adjacent italics.
-const INLINE_PATTERN = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`/g;
+// run isn't misread as two adjacent italics. The :shortcode: group matches
+// any :word: — findEmoji() decides at substitution time whether it's a
+// known emoji or just literal text containing colons, so an unrecognized
+// shortcode like ":not_a_real_emoji:" round-trips unchanged instead of
+// vanishing.
+const INLINE_PATTERN = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|:([a-z0-9_+-]+):/gi;
 
 function splitInline(text: string): RichSegment[] {
   const segments: RichSegment[] = [];
@@ -34,6 +39,9 @@ function splitInline(text: string): RichSegment[] {
     if (match[1] !== undefined) segments.push({ kind: "bold", text: match[1] });
     else if (match[2] !== undefined) segments.push({ kind: "italic", text: match[2] });
     else if (match[3] !== undefined) segments.push({ kind: "code", text: match[3] });
+    else if (match[4] !== undefined) {
+      segments.push({ kind: "text", text: findEmoji(match[4]) ?? match[0] });
+    }
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < text.length) {

@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { DmThreadSummary } from "@/lib/dms";
-import { NewDmPicker } from "@/components/NewDmPicker";
 
 function relativeTime(date: Date | string): string {
   const diffMs = Date.now() - new Date(date).getTime();
@@ -28,23 +27,25 @@ export function DmListColumn({
   activeChannelId: string | null;
   onNavigate: () => void;
 }) {
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <nav className="flex h-full flex-col overflow-y-auto px-2 py-3">
       <div className="mb-2 flex items-center justify-between px-2">
         <h2 className="text-sm font-semibold text-[var(--color-on-sidebar)]">Direct messages</h2>
-        <div className="relative">
-          <button
-            onClick={() => setPickerOpen((v) => !v)}
-            className="rounded px-1 text-[var(--color-on-sidebar-dim)] hover:text-white"
-            aria-label="Start a direct message"
-            title="Start a direct message"
-          >
-            ✎
-          </button>
-          {pickerOpen && <NewDmPicker onClose={() => setPickerOpen(false)} />}
-        </div>
+        <Link
+          href="/dms/new"
+          onClick={onNavigate}
+          className={`rounded px-1 ${
+            pathname === "/dms/new"
+              ? "text-white"
+              : "text-[var(--color-on-sidebar-dim)] hover:text-white"
+          }`}
+          aria-label="Start a direct message"
+          title="Start a direct message"
+        >
+          ✎
+        </Link>
       </div>
 
       <ul className="space-y-0.5">

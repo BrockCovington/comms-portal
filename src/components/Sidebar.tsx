@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { subscribeChannel, unsubscribeChannel } from "@/lib/pusherClient";
 import { useMobileNav } from "@/components/MobileNavContext";
-import { NewDmPicker } from "@/components/NewDmPicker";
 import { BrowseChannelsPanel } from "@/components/BrowseChannelsPanel";
 import { DmListColumn } from "@/components/DmListColumn";
 import { ThreadListColumn } from "@/components/ThreadListColumn";
@@ -54,7 +53,6 @@ export function Sidebar({
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dmPickerOpen, setDmPickerOpen] = useState(false);
   const [browseOpen, setBrowseOpen] = useState(false);
   const { open, setOpen } = useMobileNav();
 
@@ -64,7 +62,7 @@ export function Sidebar({
   // the normal channel sidebar — both when landing on /dms itself, and while
   // an actual DM conversation is open, so it stays put as you click between
   // conversations rather than reverting to the regular sidebar.
-  const inDmContext = pathname === "/dms" || !!activeChannel?.isDm;
+  const inDmContext = pathname?.startsWith("/dms") || !!activeChannel?.isDm;
   // Threads/Later/Files/Drafts/Activity each get the same dedicated-column
   // treatment, but only for their own landing page — unlike DMs, the
   // destination after clicking an item is a regular channel with no
@@ -263,17 +261,17 @@ export function Sidebar({
             label="Direct messages"
             defaultOpen
             action={
-              <button
-                onClick={() => setDmPickerOpen((v) => !v)}
+              <Link
+                href="/dms/new"
+                onClick={() => setOpen(false)}
                 className="rounded px-1 text-[var(--color-on-sidebar-dim)] hover:text-white"
                 aria-label="Start a direct message"
                 title="Start a direct message"
               >
                 +
-              </button>
+              </Link>
             }
           >
-            <div className="relative">{dmPickerOpen && <NewDmPicker onClose={() => setDmPickerOpen(false)} />}</div>
             <ul className="space-y-0.5">
               {dms.map((c) => (
                 <ChannelLink key={c.id} {...channelLinkProps(c)} />

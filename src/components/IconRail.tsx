@@ -99,9 +99,8 @@ export function IconRail({
       </Link>
 
       <RailLink href="/c" active={pathname === "/c"} icon="🏠" label="Home" />
-      {/* Starting a new DM still lives in the sidebar's "Direct messages" +
-          (NewDmPicker) — this now points at the full list of ongoing DM
-          conversations instead of toggling that same picker a second way. */}
+      {/* Starting a new DM lives at /dms/new (NewDmView) — this points at
+          the full list of ongoing DM conversations instead. */}
       <RailLink href="/dms" active={pathname === "/dms"} icon="💬" label="DMs" />
       <RailLink
         href="/activity"
