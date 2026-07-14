@@ -161,6 +161,7 @@ export function MessageList({
         {messages.map((m) => (
           <MessageRow
             key={m.id}
+            channelId={channelId}
             message={m}
             currentUserId={currentUserId}
             onOpenThread={onOpenThread}

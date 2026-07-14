@@ -91,6 +91,7 @@ export function ThreadPanel({
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <ul>
             <MessageRow
+              channelId={channelId}
               message={parent}
               currentUserId={currentUserId}
               onEdit={editMessage}
@@ -125,6 +126,7 @@ export function ThreadPanel({
             {replies.map((r) => (
               <MessageRow
                 key={r.id}
+                channelId={channelId}
                 message={r}
                 currentUserId={currentUserId}
                 onEdit={editMessage}

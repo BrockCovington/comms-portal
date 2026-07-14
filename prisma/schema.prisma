@@ -46,6 +46,7 @@ model User {
   createdEmoji            CustomEmoji[]
   notificationPreference  NotificationPreference?
   channelPreferences      ChannelPreference[]
+  scheduledMessages       ScheduledMessage[]
 }
 
 model Account {
@@ -109,6 +110,7 @@ model Channel {
   starredBy     StarredChannel[]
   pinnedMessages PinnedMessage[]
   preferences   ChannelPreference[]
+  scheduledMessages ScheduledMessage[]
 
   @@index([isPrivate, isDm])
 }
@@ -151,9 +153,56 @@ model Message {
   savedBy       SavedMessage[]
   linkPreview   LinkPreview?
   pin           PinnedMessage?
+  revisions     MessageRevision[]
 
   @@index([channelId, createdAt])
   @@index([parentId])
+}
+
+// A message composed now but delivered later. Body is AES-256-GCM ciphertext
+// like a real message; the send is "replayed" at sendAt by the dispatcher
+// (see POST /api/scheduled/dispatch), which runs it through the same
+// deliverMessage() path a live send uses. parentId/attachmentIds/
+// mentionedUserIds capture everything needed to reproduce the original
+// compose. Terminal state is recorded by sentAt / canceledAt / failedAt.
+model ScheduledMessage {
+  id               String   @id @default(cuid())
+  channelId        String
+  userId           String
+  body             String // ciphertext
+  parentId         String? // thread root, if this was a scheduled reply
+  attachmentIds    String[]
+  mentionedUserIds String[]
+  sendAt           DateTime
+  createdAt        DateTime  @default(now())
+  sentAt           DateTime?
+  canceledAt       DateTime?
+  failedAt         DateTime?
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sendAt])
+  @@index([userId, channelId])
+}
+
+// A prior version of an edited message, for edit-history transparency. On
+// each edit the superseded body is snapshotted here BEFORE the message row
+// is overwritten. Body is the same AES-256-GCM ciphertext the message
+// stored (copied as-is, never decrypted+re-encrypted), so the at-rest
+// guarantee carries over unchanged. `editedAt` is when that version was
+// authored (the message's createdAt for the original, or the edit time for
+// a later version).
+model MessageRevision {
+  id        String   @id @default(cuid())
+  messageId String
+  body      String // ciphertext of the superseded version
+  editedAt  DateTime // when this version was authored
+  createdAt DateTime @default(now()) // when the snapshot row was written
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
 }
 
 model Attachment {

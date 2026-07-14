@@ -11,6 +11,7 @@ import { ThreadPanel } from "@/components/ThreadPanel";
 import { AddMembersPanel } from "@/components/AddMembersPanel";
 import { PinnedPanel } from "@/components/PinnedPanel";
 import { ChannelNotifyMenu } from "@/components/ChannelNotifyMenu";
+import { ScheduledPanel } from "@/components/ScheduledPanel";
 import { HuddleBar } from "@/components/HuddleBar";
 import { useMobileNav } from "@/components/MobileNavContext";
 
@@ -40,6 +41,8 @@ export function ChannelView({
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [addMembersOpen, setAddMembersOpen] = useState(false);
   const [pinnedOpen, setPinnedOpen] = useState(false);
+  const [scheduledCount, setScheduledCount] = useState(0);
+  const [scheduledPanelOpen, setScheduledPanelOpen] = useState(false);
   const [rootHighlightId, setRootHighlightId] = useState<string | null>(null);
   const [threadHighlightId, setThreadHighlightId] = useState<string | null>(null);
   const [archiveBusy, setArchiveBusy] = useState(false);
@@ -128,6 +131,24 @@ export function ChannelView({
     },
     [markThreadRead]
   );
+
+  // Count of the current user's pending scheduled messages in this channel,
+  // driving the indicator above the composer. Refreshed on channel change,
+  // after scheduling one, and after canceling from the panel.
+  const refreshScheduled = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/channels/${channelId}/scheduled`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setScheduledCount(data.scheduled?.length ?? 0);
+    } catch {
+      // Non-fatal — the indicator just won't update.
+    }
+  }, [channelId]);
+
+  useEffect(() => {
+    refreshScheduled();
+  }, [refreshScheduled]);
 
   // Jump to a message from the pinned panel — a reply opens its thread and
   // highlights within it; a root message scroll-highlights in the main list.
@@ -324,15 +345,36 @@ export function ChannelView({
             This channel is archived — read only.
           </div>
         ) : (
-          <MessageComposer
-            channelId={channelId}
-            channelName={channelName}
-            onSend={sendMessage}
-            placeholder={isDm ? `Message ${channelName}` : undefined}
-            members={composerMembers}
-            onTyping={sendTyping}
-            draftsEnabled
-          />
+          <>
+            {scheduledCount > 0 && (
+              <div className="relative px-5">
+                <button
+                  onClick={() => setScheduledPanelOpen((v) => !v)}
+                  className="text-xs font-medium text-[var(--color-accent)] hover:underline"
+                >
+                  🕐 {scheduledCount} scheduled message{scheduledCount === 1 ? "" : "s"}
+                </button>
+                {scheduledPanelOpen && (
+                  <ScheduledPanel
+                    channelId={channelId}
+                    onClose={() => setScheduledPanelOpen(false)}
+                    onChange={refreshScheduled}
+                  />
+                )}
+              </div>
+            )}
+            <MessageComposer
+              channelId={channelId}
+              channelName={channelName}
+              onSend={sendMessage}
+              placeholder={isDm ? `Message ${channelName}` : undefined}
+              members={composerMembers}
+              onTyping={sendTyping}
+              draftsEnabled
+              schedulingEnabled
+              onScheduled={refreshScheduled}
+            />
+          </>
         )}
       </div>
 

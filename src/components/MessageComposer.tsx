@@ -38,6 +38,8 @@ export function MessageComposer({
   members,
   onTyping,
   draftsEnabled,
+  schedulingEnabled,
+  onScheduled,
 }: {
   channelId: string;
   channelName: string;
@@ -48,6 +50,11 @@ export function MessageComposer({
   // Root-channel composer only — thread replies (ThreadPanel) don't opt in,
   // see the visual-overhaul plan's scope note.
   draftsEnabled?: boolean;
+  // Also root-only: adds the "schedule for later" affordance next to Send.
+  schedulingEnabled?: boolean;
+  // Called after a message is successfully scheduled, so the parent can
+  // refresh its pending-scheduled count.
+  onScheduled?: () => void;
 }) {
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
@@ -56,6 +63,7 @@ export function MessageComposer({
   const [highlightIndex, setHighlightIndex] = useState(0);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -196,6 +204,39 @@ export function MessageComposer({
       clearDraft();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't send");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function scheduleSubmit(sendAt: Date) {
+    const body = value.trim();
+    if ((!body && readyAttachmentIds.length === 0) || sending || uploadingCount > 0) return;
+    setSending(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/channels/${channelId}/scheduled`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          body: body || undefined,
+          sendAt: sendAt.toISOString(),
+          attachmentIds: readyAttachmentIds.length ? readyAttachmentIds : undefined,
+          mentionedUserIds: computeMentionedUserIds(body),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Couldn't schedule");
+        return;
+      }
+      setValue("");
+      setAttachments([]);
+      clearDraft();
+      setScheduleOpen(false);
+      onScheduled?.();
+    } catch {
+      setError("Network error");
     } finally {
       setSending(false);
     }
@@ -378,20 +419,103 @@ export function MessageComposer({
               Enter to send · Shift+Enter for a new line
             </span>
           </div>
-          <button
-            onClick={submit}
-            disabled={
-              sending ||
-              uploadingCount > 0 ||
-              (value.trim().length === 0 && readyAttachmentIds.length === 0)
-            }
-            className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-40"
-          >
-            {sending ? "Sending…" : "Send"}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={submit}
+              disabled={
+                sending ||
+                uploadingCount > 0 ||
+                (value.trim().length === 0 && readyAttachmentIds.length === 0)
+              }
+              className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-40"
+            >
+              {sending ? "Sending…" : "Send"}
+            </button>
+            {schedulingEnabled && (
+              <div className="relative">
+                <button
+                  onClick={() => setScheduleOpen((v) => !v)}
+                  disabled={
+                    sending ||
+                    uploadingCount > 0 ||
+                    (value.trim().length === 0 && readyAttachmentIds.length === 0)
+                  }
+                  aria-label="Schedule for later"
+                  title="Schedule for later"
+                  className="rounded-md bg-[var(--color-accent)] px-2 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-40"
+                >
+                  🕐
+                </button>
+                {scheduleOpen && (
+                  <ScheduleMenu onPick={scheduleSubmit} onClose={() => setScheduleOpen(false)} />
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
+  );
+}
+
+const SCHEDULE_PRESETS: { label: string; at: () => Date }[] = [
+  { label: "In 30 minutes", at: () => new Date(Date.now() + 30 * 60_000) },
+  { label: "In 1 hour", at: () => new Date(Date.now() + 60 * 60_000) },
+  { label: "In 3 hours", at: () => new Date(Date.now() + 3 * 60 * 60_000) },
+  {
+    label: "Tomorrow at 9 AM",
+    at: () => {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      d.setHours(9, 0, 0, 0);
+      return d;
+    },
+  },
+];
+
+// Opens upward from the composer (which sits at the viewport bottom).
+function ScheduleMenu({ onPick, onClose }: { onPick: (d: Date) => void; onClose: () => void }) {
+  const [custom, setCustom] = useState("");
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div className="absolute bottom-full right-0 z-50 mb-1 w-56 rounded-md border border-[var(--color-line)] bg-white p-1 text-[var(--color-ink)] shadow-lg">
+        <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
+          Schedule message
+        </p>
+        {SCHEDULE_PRESETS.map((p) => (
+          <button
+            key={p.label}
+            onClick={() => onPick(p.at())}
+            className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-[var(--color-accent-soft)]"
+          >
+            {p.label}
+          </button>
+        ))}
+        <div className="mt-1 border-t border-[var(--color-line)] px-2 pt-2">
+          <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
+            Custom time
+          </label>
+          <input
+            type="datetime-local"
+            value={custom}
+            onChange={(e) => setCustom(e.target.value)}
+            className="mt-1 w-full rounded border border-[var(--color-line)] px-1.5 py-1 text-xs outline-none focus:border-[var(--color-accent)]"
+          />
+          <button
+            onClick={() => {
+              if (!custom) return;
+              const d = new Date(custom); // datetime-local parses as local time
+              if (!Number.isNaN(d.getTime())) onPick(d);
+            }}
+            disabled={!custom}
+            className="mt-1 w-full rounded bg-[var(--color-accent)] px-2 py-1 text-xs font-medium text-white disabled:opacity-40"
+          >
+            Schedule
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

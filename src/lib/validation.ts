@@ -36,6 +36,18 @@ export const postMessageSchema = z
     message: "Message can't be empty",
   });
 
+export const scheduleMessageSchema = z
+  .object({
+    body: z.string().trim().max(4000, "Message is too long").optional(),
+    sendAt: z.string().datetime("Invalid send time"),
+    parentId: z.string().cuid().optional(),
+    attachmentIds: z.array(z.string().cuid()).max(5, "Up to 5 files per message").optional(),
+    mentionedUserIds: z.array(z.string().cuid()).max(20).optional(),
+  })
+  .refine((data) => !!data.body?.length || !!data.attachmentIds?.length, {
+    message: "Message can't be empty",
+  });
+
 export const editMessageSchema = z.object({
   body: z
     .string()

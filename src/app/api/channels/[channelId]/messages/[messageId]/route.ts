@@ -52,11 +52,29 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     );
   }
 
-  const updated = await prisma.message.update({
+  // Snapshot the version we're about to replace into the edit history, then
+  // overwrite — atomically, so history can never miss a version. The old
+  // body is copied as-is (already ciphertext), and its authored-at time is
+  // the message's current editedAt, or createdAt if this is the first edit.
+  const current = await prisma.message.findUnique({
     where: { id: messageId },
-    data: { body: encryptMessage(parsed.data.body), editedAt: new Date() },
-    select: { id: true, parentId: true, editedAt: true, deletedAt: true },
+    select: { body: true, createdAt: true, editedAt: true },
   });
+
+  const [, updated] = await prisma.$transaction([
+    prisma.messageRevision.create({
+      data: {
+        messageId,
+        body: current!.body,
+        editedAt: current!.editedAt ?? current!.createdAt,
+      },
+    }),
+    prisma.message.update({
+      where: { id: messageId },
+      data: { body: encryptMessage(parsed.data.body), editedAt: new Date() },
+      select: { id: true, parentId: true, editedAt: true, deletedAt: true },
+    }),
+  ]);
 
   const message = { ...updated, body: parsed.data.body };
 

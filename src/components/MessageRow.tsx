@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ChatMessage, LinkPreview } from "@/hooks/useMessages";
 import { renderRichText, type RichSegment } from "@/lib/richtext";
 import { FullEmojiPicker } from "@/components/FullEmojiPicker";
+import { EditHistory } from "@/components/EditHistory";
 import { useCustomEmoji } from "@/components/CustomEmojiContext";
 
 // A reaction token is either a ":name:" custom emoji or a unicode grapheme.
@@ -140,6 +141,7 @@ function relativeTime(iso: string): string {
 }
 
 export function MessageRow({
+  channelId,
   message,
   currentUserId,
   onOpenThread,
@@ -153,6 +155,7 @@ export function MessageRow({
   htmlId,
   isHighlighted,
 }: {
+  channelId: string;
   message: ChatMessage;
   currentUserId: string;
   onOpenThread?: (messageId: string) => void;
@@ -171,6 +174,7 @@ export function MessageRow({
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const isDeleted = !!message.deletedAt;
   const isMine = message.user.id === currentUserId;
@@ -249,7 +253,22 @@ export function MessageRow({
             })}
           </time>
           {message.editedAt && !isDeleted && (
-            <span className="text-xs text-[var(--color-ink-soft)]">(edited)</span>
+            <span className="relative">
+              <button
+                onClick={() => setHistoryOpen((v) => !v)}
+                title="View edit history"
+                className="text-xs text-[var(--color-ink-soft)] underline decoration-dotted underline-offset-2 hover:text-[var(--color-accent)]"
+              >
+                (edited)
+              </button>
+              {historyOpen && (
+                <EditHistory
+                  channelId={channelId}
+                  messageId={message.id}
+                  onClose={() => setHistoryOpen(false)}
+                />
+              )}
+            </span>
           )}
           {message.isPinned && !isDeleted && (
             <span aria-label="Pinned" title="Pinned to channel" className="text-xs">
