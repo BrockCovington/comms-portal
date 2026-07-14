@@ -11,10 +11,9 @@ next-env.d.ts
 # production
 /build
 
-# env files — NEVER commit these
-.env
-.env*.local
-.env.local
+# env files — NEVER commit these (but keep the .env.example template)
+.env*
+!.env.example
 
 # prisma
 /prisma/*.db
@@ -24,3 +23,4 @@ next-env.d.ts
 *.pem
 /coverage
 *.tsbuildinfo
+.vercel
