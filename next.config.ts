@@ -28,12 +28,26 @@ const securityHeaders = [
       "img-src 'self' https: data:",
       // 'unsafe-eval' is only needed for Next's dev-mode Fast Refresh
       // (webpack's eval-based module runtime) — never shipped to production.
-      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+      // blob: is for the Krisp noise-cancellation SDK's AudioWorklet, which
+      // it loads from a Blob URL it constructs at runtime rather than a
+      // hosted file. worklet-src (the more precise directive for this) isn't
+      // recognized by every browser, and unrecognized directives are
+      // dropped rather than falling back — so blob: has to live on
+      // script-src directly, which every browser does fall back to.
+      `script-src 'self' 'unsafe-inline' blob:${isDev ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
+      // Belt-and-suspenders for browsers that DO support the more specific
+      // worklet-src directive.
+      "worklet-src 'self' blob:",
       // Pusher's WebSocket + HTTP-fallback transport, and LiveKit's signaling
       // WebSocket + REST calls (region lookup, connection validation) for
-      // huddles. Same-origin API/fetch calls are already covered by 'self'.
-      "connect-src 'self' https://*.pusher.com wss://*.pusher.com https://*.livekit.cloud wss://*.livekit.cloud",
+      // huddles. livekit.io (not *.livekit.cloud, the room server's own
+      // domain) is where the Krisp noise-cancellation SDK fetches its ML
+      // model from at runtime, first hitting the bare domain then
+      // redirecting to a subdomain (integrations.livekit.io) — both forms
+      // are needed since a CSP wildcard never matches the apex domain.
+      // Same-origin API/fetch calls are already covered by 'self'.
+      "connect-src 'self' https://*.pusher.com wss://*.pusher.com https://*.livekit.cloud wss://*.livekit.cloud https://livekit.io https://*.livekit.io",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

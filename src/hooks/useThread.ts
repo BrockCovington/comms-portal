@@ -112,14 +112,26 @@ export function useThread(channelId: string, parentId: string | null, currentUse
       );
     };
 
+    // A pin/unpin flips the flag on the parent or any reply, matched by id.
+    const onPinUpdated = (payload: { messageId: string; pinned: boolean }) => {
+      setParent((prev) =>
+        prev && prev.id === payload.messageId ? { ...prev, isPinned: payload.pinned } : prev
+      );
+      setReplies((prev) =>
+        prev.map((r) => (r.id === payload.messageId ? { ...r, isPinned: payload.pinned } : r))
+      );
+    };
+
     channel.bind("new-reply", onNewReply);
     channel.bind("message-updated", onMessageUpdated);
     channel.bind("reaction-updated", onReactionUpdated);
+    channel.bind("pin-updated", onPinUpdated);
 
     return () => {
       channel.unbind("new-reply", onNewReply);
       channel.unbind("message-updated", onMessageUpdated);
       channel.unbind("reaction-updated", onReactionUpdated);
+      channel.unbind("pin-updated", onPinUpdated);
       unsubscribeChannel(channelName);
     };
   }, [channelId, parentId, currentUserId, refresh]);
@@ -227,6 +239,21 @@ export function useThread(channelId: string, parentId: string | null, currentUse
     [channelId]
   );
 
+  // Shared pin — local state arrives via the pin-updated broadcast, so this
+  // just fires the request (same shape as useMessages' togglePin).
+  const togglePin = useCallback(
+    async (messageId: string) => {
+      const res = await fetch(`/api/channels/${channelId}/messages/${messageId}/pin`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Couldn't pin");
+      }
+    },
+    [channelId]
+  );
+
   return {
     parent,
     replies,
@@ -239,6 +266,7 @@ export function useThread(channelId: string, parentId: string | null, currentUse
     deleteMessage,
     toggleReaction,
     toggleSave,
+    togglePin,
     loadEarlier,
   };
 }

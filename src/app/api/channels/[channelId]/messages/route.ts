@@ -1,11 +1,52 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId, checkChannelAccess } from "@/lib/authz";
 import { postMessageSchema } from "@/lib/validation";
 import { encryptMessage, decryptMessage } from "@/lib/crypto";
 import { pusherServer, pusherChannelName, userChannelName } from "@/lib/pusher";
 import { checkMessageRateLimit } from "@/lib/ratelimit";
+import { extractFirstUrl, fetchLinkPreview, decryptLinkPreview } from "@/lib/unfurl";
 import type { NotificationType } from "@prisma/client";
+
+// Encrypt a possibly-null preview field the same way message bodies are
+// encrypted (see the LinkPreview model comment) — null stays null.
+function encryptOrNull(value: string | null): string | null {
+  return value === null ? null : encryptMessage(value);
+}
+
+// Fetch a link preview for the first URL in `body` and, if one is found,
+// persist it (encrypted) and broadcast it to everyone viewing the channel.
+// Runs via after() so it never delays the send — the message is already
+// saved and returned by the time this executes. Best-effort throughout: any
+// failure just means no preview card, never a failed send.
+async function unfurlInBackground(messageId: string, channelId: string, parentId: string | null, body: string) {
+  try {
+    const url = extractFirstUrl(body);
+    if (!url) return;
+    const preview = await fetchLinkPreview(url);
+    if (!preview) return;
+
+    await prisma.linkPreview.create({
+      data: {
+        messageId,
+        url: encryptMessage(preview.url),
+        title: encryptOrNull(preview.title),
+        description: encryptOrNull(preview.description),
+        imageUrl: encryptOrNull(preview.imageUrl),
+        siteName: encryptOrNull(preview.siteName),
+      },
+    });
+
+    // Reuse the existing message-updated event — clients already merge its
+    // partial fields onto the matching message (root list or thread panel).
+    // Plaintext preview over Pusher, same trust model as the message body.
+    await pusherServer.trigger(pusherChannelName(channelId), "message-updated", {
+      message: { id: messageId, parentId, linkPreview: preview },
+    });
+  } catch (err) {
+    console.error("Link unfurl failed:", err);
+  }
+}
 
 const NOTIFICATION_PREVIEW_LENGTH = 80;
 
@@ -76,7 +117,7 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   // Same "one extra query for the visible ids, aggregate in memory" pattern.
   const ids = rows.map((r) => r.id);
-  const [reactionRows, attachmentRows, savedRows] = ids.length
+  const [reactionRows, attachmentRows, savedRows, linkPreviewRows, pinnedRows] = ids.length
     ? await Promise.all([
         prisma.reaction.findMany({
           where: { messageId: { in: ids } },
@@ -90,9 +131,21 @@ export async function GET(request: Request, { params }: RouteContext) {
           where: { userId: userId!, messageId: { in: ids } },
           select: { messageId: true },
         }),
+        prisma.linkPreview.findMany({
+          where: { messageId: { in: ids } },
+          select: { messageId: true, url: true, title: true, description: true, imageUrl: true, siteName: true },
+        }),
+        prisma.pinnedMessage.findMany({
+          where: { messageId: { in: ids } },
+          select: { messageId: true },
+        }),
       ])
-    : [[], [], []];
+    : [[], [], [], [], []];
   const savedIds = new Set(savedRows.map((s) => s.messageId));
+  const pinnedIds = new Set(pinnedRows.map((p) => p.messageId));
+  const linkPreviewByMessage = new Map(
+    linkPreviewRows.map((p) => [p.messageId, decryptLinkPreview(p)])
+  );
   const reactionsByMessage = new Map<string, { emoji: string; count: number; mine: boolean }[]>();
   for (const r of reactionRows) {
     const list = reactionsByMessage.get(r.messageId) ?? [];
@@ -129,6 +182,8 @@ export async function GET(request: Request, { params }: RouteContext) {
         reactions: reactionsByMessage.get(m.id) ?? [],
         attachments: attachmentsByMessage.get(m.id) ?? [],
         savedByMe: savedIds.has(m.id),
+        linkPreview: linkPreviewByMessage.get(m.id) ?? null,
+        isPinned: pinnedIds.has(m.id),
       };
     });
 
@@ -327,6 +382,13 @@ export async function POST(request: Request, { params }: RouteContext) {
     // A failed broadcast shouldn't fail the send — the message is already
     // saved, and other clients will still see it on their next load.
     console.error("Pusher broadcast failed:", err);
+  }
+
+  // Unfurl any link in the body after the response is sent — the message is
+  // already saved and broadcast, so the preview arriving a beat later is
+  // exactly the Slack behavior (message instant, card pops in).
+  if (parsed.data.body) {
+    after(() => unfurlInBackground(created.id, channelId, message.parentId, parsed.data.body!));
   }
 
   // Return the plaintext we just stored (don't round-trip through the DB).

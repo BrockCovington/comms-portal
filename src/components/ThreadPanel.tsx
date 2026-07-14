@@ -34,6 +34,7 @@ export function ThreadPanel({
     deleteMessage,
     toggleReaction,
     toggleSave,
+    togglePin,
     loadEarlier,
   } = useThread(channelId, parentId, currentUserId);
 
@@ -97,6 +98,7 @@ export function ThreadPanel({
               memberNames={memberNames}
               onToggleReaction={toggleReaction}
               onToggleSave={toggleSave}
+              onTogglePin={togglePin}
               htmlId={`msg-thread-${parent.id}`}
               isHighlighted={parent.id === flashId}
             />
@@ -130,6 +132,7 @@ export function ThreadPanel({
                 memberNames={memberNames}
                 onToggleReaction={toggleReaction}
                 onToggleSave={toggleSave}
+                onTogglePin={togglePin}
                 htmlId={`msg-thread-${r.id}`}
                 isHighlighted={r.id === flashId}
               />

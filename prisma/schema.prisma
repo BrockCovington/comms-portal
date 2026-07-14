@@ -42,6 +42,7 @@ model User {
   drafts                  Draft[]
   starredChannels         StarredChannel[]
   savedMessages           SavedMessage[]
+  pinnedMessages          PinnedMessage[]
 }
 
 model Account {
@@ -103,6 +104,7 @@ model Channel {
   notifications Notification[]
   drafts        Draft[]
   starredBy     StarredChannel[]
+  pinnedMessages PinnedMessage[]
 
   @@index([isPrivate, isDm])
 }
@@ -143,6 +145,8 @@ model Message {
   attachments   Attachment[]
   notifications Notification[]
   savedBy       SavedMessage[]
+  linkPreview   LinkPreview?
+  pin           PinnedMessage?
 
   @@index([channelId, createdAt])
   @@index([parentId])
@@ -275,6 +279,41 @@ model StarredChannel {
 
   @@unique([channelId, userId])
   @@index([userId])
+}
+
+// A link-unfurl preview for the first URL in a message — fetched
+// asynchronously after send (see the messages POST route's after() call).
+// Fields are AES-256-GCM ciphertext, same as Message.body: a preview's
+// title/description reveal message content, so they get the same at-rest
+// guarantee. One per message (unfurl only the first URL).
+model LinkPreview {
+  id          String   @id @default(cuid())
+  messageId   String   @unique
+  url         String // ciphertext
+  title       String? // ciphertext
+  description String? // ciphertext
+  imageUrl    String? // ciphertext
+  siteName    String? // ciphertext
+  createdAt   DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+}
+
+// A pinned message — shared/channel-level (unlike SavedMessage, which is
+// personal). Any member can pin; the pin is visible to everyone in the
+// channel. One pin per message.
+model PinnedMessage {
+  id         String   @id @default(cuid())
+  messageId  String   @unique
+  channelId  String
+  pinnedById String
+  createdAt  DateTime @default(now())
+
+  message  Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  channel  Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  pinnedBy User    @relation(fields: [pinnedById], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
 }
 
 // "Later" — a personal flag on any message (root or reply) to come back to,

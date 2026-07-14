@@ -19,6 +19,7 @@ export function MessageList({
   memberNames,
   onToggleReaction,
   onToggleSave,
+  onTogglePin,
   highlightMessageId,
 }: {
   channelId: string;
@@ -35,6 +36,7 @@ export function MessageList({
   memberNames?: string[];
   onToggleReaction?: (messageId: string, emoji: string) => Promise<void>;
   onToggleSave?: (messageId: string) => Promise<void>;
+  onTogglePin?: (messageId: string) => Promise<void>;
   highlightMessageId?: string | null;
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -168,6 +170,7 @@ export function MessageList({
             memberNames={memberNames}
             onToggleReaction={onToggleReaction}
             onToggleSave={onToggleSave}
+            onTogglePin={onTogglePin}
             htmlId={`msg-root-${m.id}`}
             isHighlighted={m.id === flashId}
           />

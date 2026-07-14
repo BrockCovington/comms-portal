@@ -25,6 +25,16 @@ export type ChatMessage = {
   reactions?: ReactionSummary[];
   attachments?: { id: string; fileName: string; mimeType: string; size: number }[];
   savedByMe?: boolean;
+  linkPreview?: LinkPreview | null;
+  isPinned?: boolean;
+};
+
+export type LinkPreview = {
+  url: string;
+  title: string | null;
+  description: string | null;
+  imageUrl: string | null;
+  siteName: string | null;
 };
 
 function markChannelRead(channelId: string): void {
@@ -150,16 +160,27 @@ export function useMessages(
       );
     };
 
+    // Pins are shared, so a pin/unpin by anyone flips the flag for everyone
+    // viewing the channel. (Only root messages live in this list; a pinned
+    // reply is handled in useThread.)
+    const onPinUpdated = (payload: { messageId: string; pinned: boolean }) => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === payload.messageId ? { ...m, isPinned: payload.pinned } : m))
+      );
+    };
+
     channel.bind("new-message", onNewMessage);
     channel.bind("new-reply", onNewReply);
     channel.bind("message-updated", onMessageUpdated);
     channel.bind("reaction-updated", onReactionUpdated);
+    channel.bind("pin-updated", onPinUpdated);
 
     return () => {
       channel.unbind("new-message", onNewMessage);
       channel.unbind("new-reply", onNewReply);
       channel.unbind("message-updated", onMessageUpdated);
       channel.unbind("reaction-updated", onReactionUpdated);
+      channel.unbind("pin-updated", onPinUpdated);
       unsubscribeChannel(channelName);
     };
   }, [channelId, currentUserId, refresh]);
@@ -289,6 +310,22 @@ export function useMessages(
     [channelId]
   );
 
+  // Pinning is shared, so unlike save the local state comes via the
+  // pin-updated broadcast (which reaches the sender too) — this just fires
+  // the request.
+  const togglePin = useCallback(
+    async (messageId: string) => {
+      const res = await fetch(`/api/channels/${channelId}/messages/${messageId}/pin`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Couldn't pin");
+      }
+    },
+    [channelId]
+  );
+
   return {
     messages,
     loading,
@@ -301,6 +338,7 @@ export function useMessages(
     markThreadRead,
     toggleReaction,
     toggleSave,
+    togglePin,
     loadOlder,
     refresh,
   };

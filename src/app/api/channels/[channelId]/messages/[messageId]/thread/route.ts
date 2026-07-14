@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId, checkChannelAccess } from "@/lib/authz";
 import { decryptMessage } from "@/lib/crypto";
+import { decryptLinkPreview } from "@/lib/unfurl";
 
 type RouteContext = { params: Promise<{ channelId: string; messageId: string }> };
 
@@ -74,7 +75,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   const replies = rows.slice(0, PAGE_SIZE).reverse(); // oldest-first for display
 
   const idsInView = [messageId, ...replies.map((r) => r.id)];
-  const [reactionRows, attachmentRows, savedRows] = await Promise.all([
+  const [reactionRows, attachmentRows, savedRows, linkPreviewRows, pinnedRows] = await Promise.all([
     prisma.reaction.findMany({
       where: { messageId: { in: idsInView } },
       select: { messageId: true, emoji: true, userId: true },
@@ -87,8 +88,20 @@ export async function GET(request: Request, { params }: RouteContext) {
       where: { userId: userId!, messageId: { in: idsInView } },
       select: { messageId: true },
     }),
+    prisma.linkPreview.findMany({
+      where: { messageId: { in: idsInView } },
+      select: { messageId: true, url: true, title: true, description: true, imageUrl: true, siteName: true },
+    }),
+    prisma.pinnedMessage.findMany({
+      where: { messageId: { in: idsInView } },
+      select: { messageId: true },
+    }),
   ]);
   const savedIds = new Set(savedRows.map((s) => s.messageId));
+  const pinnedIds = new Set(pinnedRows.map((p) => p.messageId));
+  const linkPreviewByMessage = new Map(
+    linkPreviewRows.map((p) => [p.messageId, decryptLinkPreview(p)])
+  );
   const reactionsByMessage = groupReactions(reactionRows, userId!);
   const attachmentsByMessage = new Map<
     string,
@@ -107,12 +120,16 @@ export async function GET(request: Request, { params }: RouteContext) {
       reactions: reactionsByMessage.get(messageId) ?? [],
       attachments: attachmentsByMessage.get(messageId) ?? [],
       savedByMe: savedIds.has(messageId),
+      linkPreview: linkPreviewByMessage.get(messageId) ?? null,
+      isPinned: pinnedIds.has(messageId),
     },
     replies: replies.map((r) => ({
       ...renderBody(r),
       reactions: reactionsByMessage.get(r.id) ?? [],
       attachments: attachmentsByMessage.get(r.id) ?? [],
       savedByMe: savedIds.has(r.id),
+      linkPreview: linkPreviewByMessage.get(r.id) ?? null,
+      isPinned: pinnedIds.has(r.id),
     })),
     hasMore,
     nextCursor: hasMore ? replies[0].id : null,

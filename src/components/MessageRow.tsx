@@ -1,11 +1,49 @@
 "use client";
 
 import { useState } from "react";
-import type { ChatMessage } from "@/hooks/useMessages";
+import type { ChatMessage, LinkPreview } from "@/hooks/useMessages";
 import { renderRichText, type RichSegment } from "@/lib/richtext";
 import { EmojiPicker } from "@/components/EmojiPicker";
 
 const INLINE_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+
+// Slack-style unfurl card: a left accent bar, site name + title (linked) and
+// description, with the OG image as a thumbnail on the right if present.
+function LinkPreviewCard({ preview }: { preview: LinkPreview }) {
+  const { url, title, description, imageUrl, siteName } = preview;
+  return (
+    <div className="mt-1.5 flex max-w-lg gap-3 rounded-r-md border-l-4 border-[var(--color-line)] bg-[var(--color-accent-soft)]/30 py-1.5 pl-3 pr-2">
+      <div className="min-w-0 flex-1">
+        {siteName && <p className="truncate text-xs text-[var(--color-ink-soft)]">{siteName}</p>}
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block truncate text-sm font-medium text-[var(--color-accent)] hover:underline"
+        >
+          {title ?? url}
+        </a>
+        {description && (
+          <p className="mt-0.5 line-clamp-2 text-xs text-[var(--color-ink-soft)]">{description}</p>
+        )}
+      </div>
+      {imageUrl && (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt=""
+            className="h-16 w-16 rounded object-cover"
+            onError={(e) => {
+              // A broken/blocked OG image shouldn't leave a broken-image icon.
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        </a>
+      )}
+    </div>
+  );
+}
 
 function renderSegments(segments: RichSegment[]) {
   return segments.map((seg, i) => {
@@ -87,6 +125,7 @@ export function MessageRow({
   memberNames,
   onToggleReaction,
   onToggleSave,
+  onTogglePin,
   htmlId,
   isHighlighted,
 }: {
@@ -99,6 +138,7 @@ export function MessageRow({
   memberNames?: string[];
   onToggleReaction?: (messageId: string, emoji: string) => Promise<void>;
   onToggleSave?: (messageId: string) => Promise<void>;
+  onTogglePin?: (messageId: string) => Promise<void>;
   htmlId?: string;
   isHighlighted?: boolean;
 }) {
@@ -187,6 +227,11 @@ export function MessageRow({
           {message.editedAt && !isDeleted && (
             <span className="text-xs text-[var(--color-ink-soft)]">(edited)</span>
           )}
+          {message.isPinned && !isDeleted && (
+            <span aria-label="Pinned" title="Pinned to channel" className="text-xs">
+              📌
+            </span>
+          )}
           {message.savedByMe && !isDeleted && (
             <span aria-label="Saved for later" title="Saved for later" className="text-xs">
               🔖
@@ -243,6 +288,18 @@ export function MessageRow({
                 }`}
               >
                 {message.savedByMe ? "Saved" : "Save for later"}
+              </button>
+            )}
+            {onTogglePin && !isDeleted && (
+              <button
+                onClick={() => onTogglePin(message.id)}
+                className={`rounded px-1.5 py-0.5 text-xs hover:bg-[var(--color-accent-soft)] ${
+                  message.isPinned
+                    ? "text-[var(--color-accent)]"
+                    : "text-[var(--color-ink-soft)] hover:text-[var(--color-accent)]"
+                }`}
+              >
+                {message.isPinned ? "Unpin" : "Pin"}
               </button>
             )}
           </div>
@@ -320,6 +377,7 @@ export function MessageRow({
                 )}
               </div>
             )}
+            {message.linkPreview && <LinkPreviewCard preview={message.linkPreview} />}
           </>
         )}
 

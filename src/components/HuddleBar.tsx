@@ -11,14 +11,91 @@ import {
   VideoTrack,
   MediaDeviceSelect,
 } from "@livekit/components-react";
-import { Track, type Participant } from "livekit-client";
+import {
+  ParticipantEvent,
+  Track,
+  type LocalAudioTrack,
+  type LocalParticipant,
+  type LocalTrackPublication,
+  type Participant,
+} from "livekit-client";
 import type { TrackReference } from "@livekit/components-core";
+import type { KrispNoiseFilterProcessor } from "@livekit/krisp-noise-filter";
 import { useHuddle, type HuddleParticipant, type HuddleFloatingReaction } from "@/hooks/useHuddle";
 import { decodeParticipantImage } from "@/lib/huddle";
 import { EmojiPicker } from "@/components/EmojiPicker";
 
 function initials(name: string | null): string {
   return (name ?? "?").charAt(0).toUpperCase();
+}
+
+// Krisp's ML-based noise suppression (same category of model Zoom/Slack use)
+// runs as a client-side track processor on the local mic — no server-side
+// involvement, no LiveKit Cloud account needed. Loaded via a dynamic
+// import() rather than a top-level one: the package's own JS (before its
+// ML model, which it fetches separately at runtime) is multiple MB, and a
+// static import would bundle that into every channel page's initial load
+// just for the "Start huddle" button, whether or not anyone ever huddles.
+// Attached via a LocalTrackPublished listener (not just on mount) because
+// the underlying MediaStreamTrack gets replaced — and the processor with
+// it — every time the mic is muted/unmuted or the input device is
+// switched; watching the publish event covers all three cases instead of
+// just the initial one.
+function useNoiseFilter(localParticipant: LocalParticipant) {
+  const [supported, setSupported] = useState(false);
+  const [enabled, setEnabledState] = useState(true);
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
+  // The generic TrackProcessor interface (what track.getProcessor() returns)
+  // doesn't expose setEnabled — that's specific to KrispNoiseFilterProcessor
+  // — so the live instance is kept here directly instead of round-tripping
+  // through the track each time the toggle changes.
+  const processorRef = useRef<KrispNoiseFilterProcessor | null>(null);
+
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    import("@livekit/krisp-noise-filter").then(({ KrispNoiseFilter, isKrispNoiseFilterSupported }) => {
+      if (cancelled || !isKrispNoiseFilterSupported()) return;
+      setSupported(true);
+
+      function attach(pub: LocalTrackPublication) {
+        if (pub.source !== Track.Source.Microphone || !pub.track) return;
+        const processor = KrispNoiseFilter();
+        (pub.track as LocalAudioTrack)
+          .setProcessor(processor)
+          .then(() => {
+            processorRef.current = processor;
+            processor.setEnabled(enabledRef.current);
+          })
+          .catch(() => {
+            // Unsupported browser/device — huddle audio still works, just
+            // without noise suppression.
+          });
+      }
+
+      const existing = localParticipant.getTrackPublication(Track.Source.Microphone);
+      if (existing) attach(existing);
+      localParticipant.on(ParticipantEvent.LocalTrackPublished, attach);
+      unsubscribeRef.current = () => localParticipant.off(ParticipantEvent.LocalTrackPublished, attach);
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribeRef.current?.();
+      unsubscribeRef.current = null;
+      processorRef.current = null;
+    };
+  }, [localParticipant]);
+
+  function setEnabled(next: boolean) {
+    setEnabledState(next);
+    processorRef.current?.setEnabled(next);
+  }
+
+  return { supported, enabled, setEnabled };
 }
 
 const TILE_SIZE_MIN = 96;
@@ -348,6 +425,7 @@ function HuddleControls({
   const participants = useParticipants();
   const { localParticipant, isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled } =
     useLocalParticipant();
+  const noiseFilter = useNoiseFilter(localParticipant);
   const cameraTracks = useTracks([Track.Source.Camera], { onlySubscribed: true });
   const screenTracks = useTracks([Track.Source.ScreenShare], { onlySubscribed: true });
 
@@ -445,6 +523,16 @@ function HuddleControls({
                     Microphone
                   </p>
                   <MediaDeviceSelect kind="audioinput" className="mb-2 text-sm" />
+                  {noiseFilter.supported && (
+                    <label className="mb-2 flex items-center gap-2 px-1 text-sm text-[var(--color-ink)]">
+                      <input
+                        type="checkbox"
+                        checked={noiseFilter.enabled}
+                        onChange={(e) => noiseFilter.setEnabled(e.target.checked)}
+                      />
+                      Suppress background noise
+                    </label>
+                  )}
                   <p className="px-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
                     Camera
                   </p>

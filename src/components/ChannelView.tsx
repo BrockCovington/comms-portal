@@ -9,6 +9,7 @@ import { MessageList } from "@/components/MessageList";
 import { MessageComposer } from "@/components/MessageComposer";
 import { ThreadPanel } from "@/components/ThreadPanel";
 import { AddMembersPanel } from "@/components/AddMembersPanel";
+import { PinnedPanel } from "@/components/PinnedPanel";
 import { HuddleBar } from "@/components/HuddleBar";
 import { useMobileNav } from "@/components/MobileNavContext";
 
@@ -33,6 +34,7 @@ export function ChannelView({
 }) {
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [addMembersOpen, setAddMembersOpen] = useState(false);
+  const [pinnedOpen, setPinnedOpen] = useState(false);
   const [rootHighlightId, setRootHighlightId] = useState<string | null>(null);
   const [threadHighlightId, setThreadHighlightId] = useState<string | null>(null);
   const [archiveBusy, setArchiveBusy] = useState(false);
@@ -50,6 +52,7 @@ export function ChannelView({
     markThreadRead,
     toggleReaction,
     toggleSave,
+    togglePin,
     loadOlder,
   } = useMessages(channelId, currentUserId, activeThreadId);
   const {
@@ -119,6 +122,21 @@ export function ChannelView({
       setThreadHighlightId(null);
     },
     [markThreadRead]
+  );
+
+  // Jump to a message from the pinned panel — a reply opens its thread and
+  // highlights within it; a root message scroll-highlights in the main list.
+  // Same resolution the search/notification deep-links use.
+  const goToMessage = useCallback(
+    (messageId: string, parentId: string | null) => {
+      if (parentId) {
+        openThread(parentId);
+        setThreadHighlightId(messageId);
+      } else {
+        setRootHighlightId(messageId);
+      }
+    },
+    [openThread]
   );
 
   // A search result links here as /c/[channelId]?message=<id> (root message)
@@ -198,6 +216,24 @@ export function ChannelView({
               </button>
             )}
 
+            <div className="relative">
+              <button
+                onClick={() => setPinnedOpen((v) => !v)}
+                aria-label="Pinned messages"
+                title="Pinned messages"
+                className="rounded-md px-2 py-1 text-xs font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
+              >
+                📌 Pinned
+              </button>
+              {pinnedOpen && (
+                <PinnedPanel
+                  channelId={channelId}
+                  onClose={() => setPinnedOpen(false)}
+                  onNavigate={goToMessage}
+                />
+              )}
+            </div>
+
             {!isDm && (
               <div className="relative">
                 <button
@@ -248,6 +284,7 @@ export function ChannelView({
           memberNames={memberNames}
           onToggleReaction={toggleReaction}
           onToggleSave={toggleSave}
+          onTogglePin={togglePin}
           highlightMessageId={rootHighlightId}
         />
 
