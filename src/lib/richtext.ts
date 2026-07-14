@@ -14,7 +14,8 @@ export type RichSegment =
   | { kind: "bold"; text: string }
   | { kind: "italic"; text: string }
   | { kind: "code"; text: string }
-  | { kind: "mention"; text: string };
+  | { kind: "mention"; text: string }
+  | { kind: "customEmoji"; text: string; url: string };
 
 export type RichBlock =
   | { type: "text"; lines: RichSegment[][] }
@@ -28,7 +29,7 @@ export type RichBlock =
 // vanishing.
 const INLINE_PATTERN = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|:([a-z0-9_+-]+):/gi;
 
-function splitInline(text: string): RichSegment[] {
+function splitInline(text: string, customEmoji?: Map<string, string>): RichSegment[] {
   const segments: RichSegment[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -40,7 +41,13 @@ function splitInline(text: string): RichSegment[] {
     else if (match[2] !== undefined) segments.push({ kind: "italic", text: match[2] });
     else if (match[3] !== undefined) segments.push({ kind: "code", text: match[3] });
     else if (match[4] !== undefined) {
-      segments.push({ kind: "text", text: findEmoji(match[4]) ?? match[0] });
+      // Resolution order: built-in unicode shortcode, then a custom
+      // workspace emoji, then leave the raw ":name:" text untouched.
+      const unicode = findEmoji(match[4]);
+      const customUrl = customEmoji?.get(match[4].toLowerCase());
+      if (unicode) segments.push({ kind: "text", text: unicode });
+      else if (customUrl) segments.push({ kind: "customEmoji", text: match[0], url: customUrl });
+      else segments.push({ kind: "text", text: match[0] });
     }
     lastIndex = match.index + match[0].length;
   }
@@ -50,14 +57,18 @@ function splitInline(text: string): RichSegment[] {
   return segments;
 }
 
-function splitSegments(text: string, memberNames: string[]): RichSegment[] {
+function splitSegments(
+  text: string,
+  memberNames: string[],
+  customEmoji?: Map<string, string>
+): RichSegment[] {
   const mentionFragments = splitMentions(text, memberNames);
   const segments: RichSegment[] = [];
   for (const fragment of mentionFragments) {
     if (fragment.isMention) {
       segments.push({ kind: "mention", text: fragment.text });
     } else {
-      segments.push(...splitInline(fragment.text));
+      segments.push(...splitInline(fragment.text, customEmoji));
     }
   }
   return segments;
@@ -69,13 +80,21 @@ const BULLET_PATTERN = /^[-*]\s+/;
 // block, and consecutive plain lines into one text block (rendered with a
 // line break between them, so multi-line plain text still reads as one
 // paragraph rather than one <p> per line).
-export function renderRichText(body: string, memberNames: string[]): RichBlock[] {
+export function renderRichText(
+  body: string,
+  memberNames: string[],
+  customEmoji?: Map<string, string>
+): RichBlock[] {
   const lines = body.split("\n");
   const blocks: RichBlock[] = [];
 
   for (const line of lines) {
     const isBullet = BULLET_PATTERN.test(line);
-    const segments = splitSegments(isBullet ? line.replace(BULLET_PATTERN, "") : line, memberNames);
+    const segments = splitSegments(
+      isBullet ? line.replace(BULLET_PATTERN, "") : line,
+      memberNames,
+      customEmoji
+    );
     const last = blocks[blocks.length - 1];
 
     if (isBullet) {

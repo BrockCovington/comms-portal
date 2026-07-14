@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { splitMentions } from "@/lib/mentions";
+import { FullEmojiPicker } from "@/components/FullEmojiPicker";
 
 const DRAFT_SAVE_DEBOUNCE_MS = 1000;
 
@@ -54,6 +55,7 @@ export function MessageComposer({
   const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
   const [highlightIndex, setHighlightIndex] = useState(0);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -232,6 +234,22 @@ export function MessageComposer({
     });
   }
 
+  // Insert a picked emoji token at the cursor. Custom emoji arrive as
+  // ":name:" text, which the message renderer resolves to an image on send.
+  function insertToken(token: string) {
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? value.length;
+    const end = el?.selectionEnd ?? value.length;
+    const next = value.slice(0, start) + token + value.slice(end);
+    setValue(next);
+    saveDraftDebounced(next);
+    const pos = start + token.length;
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(pos, pos);
+    });
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (mentionOpen) {
       if (e.key === "ArrowDown") {
@@ -339,6 +357,23 @@ export function MessageComposer({
             >
               📎
             </button>
+            <div className="relative">
+              <button
+                onClick={() => setEmojiOpen((v) => !v)}
+                aria-label="Insert emoji"
+                title="Insert emoji"
+                className="rounded p-1 text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
+              >
+                😊
+              </button>
+              {emojiOpen && (
+                <FullEmojiPicker
+                  placement="up"
+                  onPick={(token) => insertToken(token)}
+                  onClose={() => setEmojiOpen(false)}
+                />
+              )}
+            </div>
             <span className="text-xs text-[var(--color-ink-soft)]">
               Enter to send · Shift+Enter for a new line
             </span>

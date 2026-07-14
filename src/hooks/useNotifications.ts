@@ -10,7 +10,7 @@ function userChannelName(userId: string): string {
   return `private-user-${userId}`;
 }
 
-export type NotificationType = "MENTION" | "DM" | "THREAD_REPLY";
+export type NotificationType = "MENTION" | "DM" | "THREAD_REPLY" | "KEYWORD" | "CHANNEL";
 
 export type AppNotification = {
   id: string;

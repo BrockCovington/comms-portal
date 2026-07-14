@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useNotifications } from "@/hooks/useNotifications";
+import { NotificationPrefsPanel } from "@/components/NotificationPrefsPanel";
 
 function railItemClass(active: boolean) {
   return `flex w-16 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 transition ${
@@ -55,6 +56,7 @@ export function IconRail({
   const router = useRouter();
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [notifPrefsOpen, setNotifPrefsOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   // Just the badge count, not the dropdown — Activity is now a full page
   // (src/app/(app)/activity/page.tsx), this hook call only drives the
@@ -128,7 +130,13 @@ export function IconRail({
         {moreOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />
-            <div className="absolute bottom-full left-1/2 z-50 mb-1 w-36 -translate-x-1/2 rounded-md border border-[var(--color-line)] bg-white p-1 text-left shadow-lg">
+            <div className="absolute bottom-full left-1/2 z-50 mb-1 w-40 -translate-x-1/2 rounded-md border border-[var(--color-line)] bg-white p-1 text-left shadow-lg">
+              <button
+                onClick={() => { setMoreOpen(false); setNotifPrefsOpen(true); }}
+                className="block w-full rounded px-2 py-1.5 text-left text-xs text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
+              >
+                Notifications
+              </button>
               <form action={signOutAction}>
                 <button
                   type="submit"
@@ -140,6 +148,7 @@ export function IconRail({
             </div>
           </>
         )}
+        {notifPrefsOpen && <NotificationPrefsPanel onClose={() => setNotifPrefsOpen(false)} />}
         <button
           onClick={() => setMoreOpen((v) => !v)}
           className={railItemClass(moreOpen)}

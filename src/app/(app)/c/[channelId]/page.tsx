@@ -26,10 +26,16 @@ export default async function ChannelPage({
     channelName = otherMemberLabel(members, userId!);
   }
 
-  const starred = await prisma.starredChannel.findUnique({
-    where: { channelId_userId: { channelId, userId: userId! } },
-    select: { id: true },
-  });
+  const [starred, notifyPref] = await Promise.all([
+    prisma.starredChannel.findUnique({
+      where: { channelId_userId: { channelId, userId: userId! } },
+      select: { id: true },
+    }),
+    prisma.channelPreference.findUnique({
+      where: { userId_channelId: { userId: userId!, channelId } },
+      select: { muted: true, level: true },
+    }),
+  ]);
 
   return (
     <ChannelView
@@ -40,6 +46,8 @@ export default async function ChannelPage({
       isArchived={!!access.channel.archivedAt}
       isAdmin={session!.user.role === "ADMIN"}
       isStarred={!!starred}
+      notifyMuted={notifyPref?.muted ?? false}
+      notifyLevel={notifyPref?.level ?? "MENTIONS"}
       currentUserId={userId!}
     />
   );

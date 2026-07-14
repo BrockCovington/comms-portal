@@ -3,7 +3,19 @@
 import { useState } from "react";
 import type { ChatMessage, LinkPreview } from "@/hooks/useMessages";
 import { renderRichText, type RichSegment } from "@/lib/richtext";
-import { EmojiPicker } from "@/components/EmojiPicker";
+import { FullEmojiPicker } from "@/components/FullEmojiPicker";
+import { useCustomEmoji } from "@/components/CustomEmojiContext";
+
+// A reaction token is either a ":name:" custom emoji or a unicode grapheme.
+function ReactionToken({ token }: { token: string }) {
+  const { byName } = useCustomEmoji();
+  const custom = token.startsWith(":") && token.endsWith(":") ? byName.get(token.slice(1, -1)) : undefined;
+  if (custom) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={custom} alt={token} className="inline-block h-4 w-4 object-contain align-text-bottom" />;
+  }
+  return <span>{token}</span>;
+}
 
 const INLINE_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
@@ -67,6 +79,17 @@ function renderSegments(segments: RichSegment[]) {
             {seg.text}
           </code>
         );
+      case "customEmoji":
+        // eslint-disable-next-line @next/next/no-img-element
+        return (
+          <img
+            key={i}
+            src={seg.url}
+            alt={seg.text}
+            title={seg.text}
+            className="inline-block h-[1.25em] w-[1.25em] object-contain align-text-bottom"
+          />
+        );
       default:
         return <span key={i}>{seg.text}</span>;
     }
@@ -74,7 +97,8 @@ function renderSegments(segments: RichSegment[]) {
 }
 
 function RichBody({ body, memberNames }: { body: string; memberNames: string[] }) {
-  const blocks = renderRichText(body, memberNames);
+  const { byName } = useCustomEmoji();
+  const blocks = renderRichText(body, memberNames, byName);
   return (
     <div className="whitespace-pre-wrap break-words text-sm text-[var(--color-ink)]">
       {blocks.map((block, i) =>
@@ -271,8 +295,8 @@ export function MessageRow({
                   + react
                 </button>
                 {pickerOpen && (
-                  <EmojiPicker
-                    onPick={(emoji) => onToggleReaction(message.id, emoji)}
+                  <FullEmojiPicker
+                    onPick={(token) => onToggleReaction(message.id, token)}
                     onClose={() => setPickerOpen(false)}
                   />
                 )}
@@ -396,7 +420,7 @@ export function MessageRow({
                     : "border-[var(--color-line)] text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)]"
                 }`}
               >
-                <span>{r.emoji}</span>
+                <ReactionToken token={r.emoji} />
                 <span>{r.count}</span>
               </button>
             ))}

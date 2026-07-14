@@ -284,12 +284,19 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const message = { ...created, body: parsed.data.body ?? "", attachments };
 
-  // Notifications: @mentions, DMs, and thread replies (to a thread you
-  // started or already replied in) — never a plain unaddressed channel
-  // message. Priority when someone qualifies more than one way: a mention
-  // is the most intentional signal, so MENTION beats THREAD_REPLY beats DM.
+  // Notifications, in priority order when someone qualifies more than one
+  // way: MENTION (@you) > KEYWORD (your alert word) > THREAD_REPLY > DM >
+  // CHANNEL (every-message, for channels set to "All"). Per-recipient
+  // notification preferences (mute, level, keywords, DND) are applied after
+  // the base set is built — see below.
   const recipientTypes = new Map<string, NotificationType>();
-  const PRIORITY: Record<NotificationType, number> = { MENTION: 3, THREAD_REPLY: 2, DM: 1 };
+  const PRIORITY: Record<NotificationType, number> = {
+    MENTION: 5,
+    KEYWORD: 4,
+    THREAD_REPLY: 3,
+    DM: 2,
+    CHANNEL: 1,
+  };
   function addRecipient(candidateId: string, type: NotificationType) {
     if (candidateId === userId) return; // never notify yourself
     const existing = recipientTypes.get(candidateId);
@@ -298,20 +305,36 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
   }
 
+  // Everyone in the channel (minus the sender) plus their prefs — needed
+  // because keyword and "All"-level notifications can reach a member who
+  // wasn't mentioned/replied-to at all.
+  const memberRows = await prisma.channelMember.findMany({
+    where: { channelId },
+    select: { userId: true },
+  });
+  const memberIds = memberRows.map((m) => m.userId).filter((id) => id !== userId);
+  const [channelPrefRows, globalPrefRows] = await Promise.all([
+    prisma.channelPreference.findMany({
+      where: { channelId, userId: { in: memberIds } },
+      select: { userId: true, muted: true, level: true },
+    }),
+    prisma.notificationPreference.findMany({
+      where: { userId: { in: memberIds } },
+      select: { userId: true, dndUntil: true, keywords: true },
+    }),
+  ]);
+  const channelPref = new Map(channelPrefRows.map((p) => [p.userId, p]));
+  const globalPref = new Map(globalPrefRows.map((p) => [p.userId, p]));
+  const memberSet = new Set(memberIds);
+
   if (parsed.data.mentionedUserIds?.length) {
-    // Re-validate against real membership — never trust client-provided ids.
-    const validMentions = await prisma.channelMember.findMany({
-      where: { channelId, userId: { in: parsed.data.mentionedUserIds } },
-      select: { userId: true },
-    });
-    for (const m of validMentions) addRecipient(m.userId, "MENTION");
+    // Only ids that are actually members — never trust client-provided ids.
+    for (const id of parsed.data.mentionedUserIds) {
+      if (memberSet.has(id)) addRecipient(id, "MENTION");
+    }
   }
   if (access.channel.isDm) {
-    const dmMembers = await prisma.channelMember.findMany({
-      where: { channelId },
-      select: { userId: true },
-    });
-    for (const m of dmMembers) addRecipient(m.userId, "DM");
+    for (const id of memberIds) addRecipient(id, "DM");
   }
   if (parent) {
     addRecipient(parent.userId, "THREAD_REPLY");
@@ -322,6 +345,38 @@ export async function POST(request: Request, { params }: RouteContext) {
     });
     for (const r of repliers) addRecipient(r.userId, "THREAD_REPLY");
   }
+
+  // Keyword alerts: notify any member whose alert word appears in the body.
+  const bodyLower = (parsed.data.body ?? "").toLowerCase();
+  if (bodyLower) {
+    for (const id of memberIds) {
+      const keywords = globalPref.get(id)?.keywords ?? [];
+      if (keywords.some((k) => k && bodyLower.includes(k))) addRecipient(id, "KEYWORD");
+    }
+  }
+
+  // "All"-level channels: every message notifies (lowest priority, so a
+  // mention/keyword/etc. on the same message still wins the type).
+  for (const id of memberIds) {
+    if (channelPref.get(id)?.level === "ALL") addRecipient(id, "CHANNEL");
+  }
+
+  // Apply per-channel suppression: a muted channel or a "Nothing" level
+  // drops the recipient entirely, whatever the reason they'd have qualified.
+  for (const id of [...recipientTypes.keys()]) {
+    const cp = channelPref.get(id);
+    if (cp?.muted || cp?.level === "NONE") recipientTypes.delete(id);
+  }
+
+  // Do Not Disturb: these recipients still GET the notification (it shows in
+  // their Activity feed later) but no live push/toast is sent right now.
+  const now = created.createdAt;
+  const dndUserIds = new Set(
+    memberIds.filter((id) => {
+      const until = globalPref.get(id)?.dndUntil;
+      return until && until > now;
+    })
+  );
 
   if (recipientTypes.size > 0) {
     const notifications = await prisma.notification.createManyAndReturn({
@@ -344,7 +399,10 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     try {
       await Promise.all(
-        notifications.map((n) =>
+        // DND recipients get the stored notification but no live push/toast.
+        notifications
+          .filter((n) => !dndUserIds.has(n.userId))
+          .map((n) =>
           pusherServer.trigger(userChannelName(n.userId), "notification", {
             id: n.id,
             type: n.type,

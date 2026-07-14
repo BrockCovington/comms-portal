@@ -43,6 +43,9 @@ model User {
   starredChannels         StarredChannel[]
   savedMessages           SavedMessage[]
   pinnedMessages          PinnedMessage[]
+  createdEmoji            CustomEmoji[]
+  notificationPreference  NotificationPreference?
+  channelPreferences      ChannelPreference[]
 }
 
 model Account {
@@ -105,6 +108,7 @@ model Channel {
   drafts        Draft[]
   starredBy     StarredChannel[]
   pinnedMessages PinnedMessage[]
+  preferences   ChannelPreference[]
 
   @@index([isPrivate, isDm])
 }
@@ -226,6 +230,8 @@ enum NotificationType {
   MENTION
   DM
   THREAD_REPLY
+  KEYWORD // a word from the recipient's keyword-alert list appeared
+  CHANNEL // any message, for a channel the recipient set to "All"
 }
 
 model Notification {
@@ -329,4 +335,58 @@ model SavedMessage {
 
   @@unique([messageId, userId])
   @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Custom workspace emoji. Any member can add one (see POST /api/emoji). The
+// image lives in Vercel Blob with PUBLIC access — unlike file attachments
+// (private, proxied), custom emoji are intentionally workspace-wide display
+// assets shown inline everywhere, not confidential content, so the Blob URL
+// is used directly.
+// ---------------------------------------------------------------------------
+model CustomEmoji {
+  id          String   @id @default(cuid())
+  name        String   @unique // shortcode without colons, e.g. "partyparrot"
+  url         String // private Blob URL — server-only, streamed via GET /api/emoji/:id
+  pathname    String // Blob pathname, for delete()
+  mimeType    String
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+}
+
+// Per-channel notification preference for one user. "muted" suppresses
+// notifications AND the sidebar unread badge; "level" picks which message
+// types notify when not muted (see the messages POST route's recipient
+// resolution). Absent row = defaults (not muted, MENTIONS).
+enum ChannelNotifyLevel {
+  ALL // every message
+  MENTIONS // @mentions, DMs, thread replies only (the app's original behavior)
+  NONE // nothing
+}
+
+model ChannelPreference {
+  id        String             @id @default(cuid())
+  userId    String
+  channelId String
+  muted     Boolean            @default(false)
+  level     ChannelNotifyLevel @default(MENTIONS)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channelId])
+  @@index([userId])
+}
+
+// User-global notification preferences: Do Not Disturb (snooze-until) and
+// keyword alerts. One row per user, created on first change.
+model NotificationPreference {
+  id       String    @id @default(cuid())
+  userId   String    @unique
+  dndUntil DateTime? // notifications pushed to null/past = not snoozed
+  keywords String[] // alert words: notify when any appears in a message
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

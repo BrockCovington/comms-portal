@@ -8,5 +8,16 @@ export function describeNotification(n: AppNotification): string {
     return n.parentId ? "replied in your conversation" : "sent you a message";
   }
   const where = n.parentId ? `a thread in #${n.channelName}` : `#${n.channelName}`;
-  return n.type === "MENTION" ? `mentioned you in ${where}` : `replied in ${where}`;
+  switch (n.type) {
+    case "MENTION":
+      return `mentioned you in ${where}`;
+    case "KEYWORD":
+      return `matched a keyword in ${where}`;
+    case "CHANNEL":
+      return `posted in ${where}`;
+    case "THREAD_REPLY":
+      return `replied in ${where}`;
+    default:
+      return `replied in ${where}`;
+  }
 }

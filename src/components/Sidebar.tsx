@@ -29,6 +29,7 @@ type Channel = {
   isDm: boolean;
   hasUnread: boolean;
   isStarred?: boolean;
+  muted?: boolean;
   archivedAt?: string | Date | null;
 };
 
@@ -106,6 +107,12 @@ export function Sidebar({
   // per-channel authorization as the channel view itself (no new Pusher
   // channel type) — fine at this app's scale (a handful to a few dozen
   // channels per user, not thousands).
+  // Muted channels never light up (matches the server-suppressed unread and
+  // Slack behavior). Held in a ref so the subscribe effect doesn't re-run
+  // just because mute state changed.
+  const mutedRef = useRef<Set<string>>(new Set());
+  mutedRef.current = new Set(channels.filter((c) => c.muted).map((c) => c.id));
+
   const channelIdsKey = channels.map((c) => c.id).join(",");
   useEffect(() => {
     const ids = channelIdsKey ? channelIdsKey.split(",") : [];
@@ -114,6 +121,7 @@ export function Sidebar({
 
     const onActivity = (payload: { message: { parentId?: string | null } }, channelId: string) => {
       if (channelId === activeChannelIdRef.current) return;
+      if (mutedRef.current.has(channelId)) return;
       setLiveUnread((prev) => (prev.has(channelId) ? prev : new Set(prev).add(channelId)));
     };
 
@@ -171,7 +179,9 @@ export function Sidebar({
       active: pathname === `/c/${c.id}`,
       prefix: c.isDm ? "•" : c.isPrivate ? "🔒" : "#",
       name: c.archivedAt ? `${c.name} (archived)` : c.name,
-      unread: c.id !== activeChannelId && (c.hasUnread || liveUnread.has(c.id)),
+      // Muted channels never show an unread dot, even from a live event.
+      unread: !c.muted && c.id !== activeChannelId && (c.hasUnread || liveUnread.has(c.id)),
+      muted: !!c.muted,
       onNavigate: () => setOpen(false),
     };
   }
@@ -351,6 +361,7 @@ function ChannelLink({
   prefix,
   name,
   unread,
+  muted,
   onNavigate,
 }: {
   href: string;
@@ -358,6 +369,7 @@ function ChannelLink({
   prefix: string;
   name: string;
   unread: boolean;
+  muted?: boolean;
   onNavigate: () => void;
 }) {
   return (
@@ -368,11 +380,12 @@ function ChannelLink({
         className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition ${
           active
             ? "bg-[var(--color-sidebar-active)] text-white"
-            : "text-[var(--color-on-sidebar)] hover:bg-white/10"
+            : `hover:bg-white/10 ${muted ? "text-[var(--color-on-sidebar-dim)]" : "text-[var(--color-on-sidebar)]"}`
         }`}
       >
         <span className="text-[var(--color-on-sidebar-dim)]">{prefix}</span>
         <span className={`truncate ${unread ? "font-semibold text-white" : ""}`}>{name}</span>
+        {muted && !active && <span className="ml-auto text-xs opacity-70">🔕</span>}
         {unread && (
           <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-white" />
         )}

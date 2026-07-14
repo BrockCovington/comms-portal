@@ -10,6 +10,7 @@ import { MessageComposer } from "@/components/MessageComposer";
 import { ThreadPanel } from "@/components/ThreadPanel";
 import { AddMembersPanel } from "@/components/AddMembersPanel";
 import { PinnedPanel } from "@/components/PinnedPanel";
+import { ChannelNotifyMenu } from "@/components/ChannelNotifyMenu";
 import { HuddleBar } from "@/components/HuddleBar";
 import { useMobileNav } from "@/components/MobileNavContext";
 
@@ -21,6 +22,8 @@ export function ChannelView({
   isArchived,
   isAdmin,
   isStarred,
+  notifyMuted,
+  notifyLevel,
   currentUserId,
 }: {
   channelId: string;
@@ -30,6 +33,8 @@ export function ChannelView({
   isArchived?: boolean;
   isAdmin?: boolean;
   isStarred?: boolean;
+  notifyMuted?: boolean;
+  notifyLevel?: "ALL" | "MENTIONS" | "NONE";
   currentUserId: string;
 }) {
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
@@ -215,6 +220,12 @@ export function ChannelView({
                     : "Archive channel"}
               </button>
             )}
+
+            <ChannelNotifyMenu
+              channelId={channelId}
+              initialMuted={!!notifyMuted}
+              initialLevel={notifyLevel ?? "MENTIONS"}
+            />
 
             <div className="relative">
               <button

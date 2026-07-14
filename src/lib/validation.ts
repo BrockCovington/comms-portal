@@ -1,5 +1,13 @@
 import { z } from "zod";
-import { REACTION_EMOJIS } from "@/lib/reactions";
+
+// A reaction is either a custom-emoji shortcode (":partyparrot:") or a raw
+// unicode emoji grapheme. We can't cheaply enumerate every unicode emoji
+// here, so instead we reject anything that's clearly NOT one: ASCII letters,
+// digits, or whitespace (real emoji graphemes contain none of those), and
+// cap the length so a grapheme cluster with modifiers still fits but prose
+// can't sneak in. This replaced the old fixed 8-emoji allow-list.
+const CUSTOM_SHORTCODE = /^:[a-z0-9_-]{2,32}:$/;
+const NON_EMOJI_CHARS = /[a-zA-Z0-9\s]/;
 
 export const createChannelSchema = z.object({
   name: z
@@ -45,7 +53,13 @@ export const addChannelMemberSchema = z.object({
 });
 
 export const toggleReactionSchema = z.object({
-  emoji: z.enum(REACTION_EMOJIS),
+  emoji: z
+    .string()
+    .min(1)
+    .max(64)
+    .refine((v) => CUSTOM_SHORTCODE.test(v) || (v.length <= 16 && !NON_EMOJI_CHARS.test(v)), {
+      message: "Invalid emoji",
+    }),
 });
 
 export const updateRoleSchema = z.object({
