@@ -130,7 +130,10 @@ export function IconRail({
         {moreOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />
-            <div className="absolute bottom-full left-1/2 z-50 mb-1 w-40 -translate-x-1/2 rounded-md border border-[var(--color-line)] bg-white p-1 text-left shadow-lg">
+            {/* Fixed, anchored just right of the rail: the rail is a narrow
+                overflow-y-auto column, so an absolute menu centered on it
+                spills off the left edge of the screen and gets clipped. */}
+            <div className="fixed bottom-4 left-[5.5rem] z-50 w-44 rounded-md border border-[var(--color-line)] bg-white p-1 text-left shadow-lg">
               <button
                 onClick={() => { setMoreOpen(false); setNotifPrefsOpen(true); }}
                 className="block w-full rounded px-2 py-1.5 text-left text-xs text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"

@@ -5,7 +5,23 @@ import type { ChatMessage, LinkPreview } from "@/hooks/useMessages";
 import { renderRichText, type RichSegment } from "@/lib/richtext";
 import { FullEmojiPicker } from "@/components/FullEmojiPicker";
 import { EditHistory } from "@/components/EditHistory";
+import { ForwardDialog } from "@/components/ForwardDialog";
 import { useCustomEmoji } from "@/components/CustomEmojiContext";
+
+// The embedded original shown on a forwarded message.
+function ForwardedEmbed({ forwarded }: { forwarded: NonNullable<ChatMessage["forwarded"]> }) {
+  return (
+    <div className="mt-1.5 max-w-lg rounded-r-md border-l-4 border-[var(--color-line)] bg-[var(--color-accent-soft)]/20 py-1 pl-3 pr-2">
+      <p className="text-xs text-[var(--color-ink-soft)]">
+        ↪ Forwarded from {forwarded.sourceIsDm ? forwarded.sourceLabel : `#${forwarded.sourceLabel}`}
+        {forwarded.sourceAuthorName ? ` · ${forwarded.sourceAuthorName}` : ""}
+      </p>
+      <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-[var(--color-ink)]">
+        {forwarded.body || <span className="italic text-[var(--color-ink-soft)]">(no text)</span>}
+      </p>
+    </div>
+  );
+}
 
 // A reaction token is either a ":name:" custom emoji or a unicode grapheme.
 function ReactionToken({ token }: { token: string }) {
@@ -175,6 +191,7 @@ export function MessageRow({
   const [actionError, setActionError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [forwardOpen, setForwardOpen] = useState(false);
 
   const isDeleted = !!message.deletedAt;
   const isMine = message.user.id === currentUserId;
@@ -305,6 +322,14 @@ export function MessageRow({
                 Reply in thread
               </button>
             )}
+            {!isDeleted && (
+              <button
+                onClick={() => setForwardOpen(true)}
+                className="rounded px-1.5 py-0.5 text-xs text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
+              >
+                Forward
+              </button>
+            )}
             {onToggleReaction && !isDeleted && (
               <div className="relative">
                 <button
@@ -421,6 +446,7 @@ export function MessageRow({
               </div>
             )}
             {message.linkPreview && <LinkPreviewCard preview={message.linkPreview} />}
+            {message.forwarded && <ForwardedEmbed forwarded={message.forwarded} />}
           </>
         )}
 
@@ -465,6 +491,13 @@ export function MessageRow({
           </button>
         )}
       </div>
+      {forwardOpen && (
+        <ForwardDialog
+          sourceChannelId={channelId}
+          messageId={message.id}
+          onClose={() => setForwardOpen(false)}
+        />
+      )}
     </li>
   );
 }

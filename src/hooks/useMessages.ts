@@ -27,6 +27,15 @@ export type ChatMessage = {
   savedByMe?: boolean;
   linkPreview?: LinkPreview | null;
   isPinned?: boolean;
+  forwarded?: Forwarded | null;
+};
+
+export type Forwarded = {
+  sourceLabel: string;
+  sourceIsDm: boolean;
+  sourceAuthorName: string | null;
+  body: string;
+  originalCreatedAt: string;
 };
 
 export type LinkPreview = {

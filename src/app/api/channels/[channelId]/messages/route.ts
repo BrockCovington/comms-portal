@@ -5,6 +5,7 @@ import { postMessageSchema } from "@/lib/validation";
 import { decryptMessage } from "@/lib/crypto";
 import { checkMessageRateLimit } from "@/lib/ratelimit";
 import { decryptLinkPreview } from "@/lib/unfurl";
+import { decryptForwarded } from "@/lib/forward";
 import { deliverMessage } from "@/lib/deliver";
 
 type RouteContext = { params: Promise<{ channelId: string }> };
@@ -74,7 +75,8 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   // Same "one extra query for the visible ids, aggregate in memory" pattern.
   const ids = rows.map((r) => r.id);
-  const [reactionRows, attachmentRows, savedRows, linkPreviewRows, pinnedRows] = ids.length
+  const [reactionRows, attachmentRows, savedRows, linkPreviewRows, pinnedRows, forwardedRows] =
+    ids.length
     ? await Promise.all([
         prisma.reaction.findMany({
           where: { messageId: { in: ids } },
@@ -96,12 +98,19 @@ export async function GET(request: Request, { params }: RouteContext) {
           where: { messageId: { in: ids } },
           select: { messageId: true },
         }),
+        prisma.forwardedMessage.findMany({
+          where: { messageId: { in: ids } },
+          select: { messageId: true, sourceLabel: true, sourceIsDm: true, sourceAuthorName: true, body: true, originalCreatedAt: true },
+        }),
       ])
-    : [[], [], [], [], []];
+    : [[], [], [], [], [], []];
   const savedIds = new Set(savedRows.map((s) => s.messageId));
   const pinnedIds = new Set(pinnedRows.map((p) => p.messageId));
   const linkPreviewByMessage = new Map(
     linkPreviewRows.map((p) => [p.messageId, decryptLinkPreview(p)])
+  );
+  const forwardedByMessage = new Map(
+    forwardedRows.map((f) => [f.messageId, decryptForwarded(f)])
   );
   const reactionsByMessage = new Map<string, { emoji: string; count: number; mine: boolean }[]>();
   for (const r of reactionRows) {
@@ -141,6 +150,7 @@ export async function GET(request: Request, { params }: RouteContext) {
         savedByMe: savedIds.has(m.id),
         linkPreview: linkPreviewByMessage.get(m.id) ?? null,
         isPinned: pinnedIds.has(m.id),
+        forwarded: forwardedByMessage.get(m.id) ?? null,
       };
     });
 

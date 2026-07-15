@@ -154,9 +154,30 @@ model Message {
   linkPreview   LinkPreview?
   pin           PinnedMessage?
   revisions     MessageRevision[]
+  forwarded     ForwardedMessage?
 
   @@index([channelId, createdAt])
   @@index([parentId])
+}
+
+// A snapshot of a message forwarded into another channel. The forwarded
+// message is a normal Message (its body is the forwarder's optional
+// comment); this holds the embedded original — captured at forward time so
+// rendering never needs access to the source channel (which the target
+// audience may not have) and isn't affected by later edits/deletes of the
+// original. `body` is ciphertext like any message content; sourceLabel is a
+// plaintext channel name / "a direct message", not message content.
+model ForwardedMessage {
+  id                String   @id @default(cuid())
+  messageId         String   @unique
+  sourceLabel       String
+  sourceIsDm        Boolean  @default(false)
+  sourceAuthorName  String?
+  body              String // ciphertext of the original message body
+  originalCreatedAt DateTime
+  createdAt         DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
 }
 
 // A message composed now but delivered later. Body is AES-256-GCM ciphertext
