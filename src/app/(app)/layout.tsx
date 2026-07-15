@@ -6,6 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { TopBar } from "@/components/TopBar";
 import { IconRail } from "@/components/IconRail";
 import { NotificationToasts } from "@/components/NotificationToasts";
+import { IncomingHuddle } from "@/components/IncomingHuddle";
 import { CustomEmojiProvider } from "@/components/CustomEmojiContext";
 import { getChannelsWithUnread } from "@/lib/channels";
 import { getDmThreadsForUser } from "@/lib/dms";
@@ -74,6 +75,7 @@ export default async function AppLayout({
         {children}
       </AppShell>
       <NotificationToasts currentUserId={userId} />
+      <IncomingHuddle currentUserId={userId} />
     </CustomEmojiProvider>
   );
 }

@@ -70,9 +70,10 @@ function useNoiseFilter(localParticipant: LocalParticipant) {
             processorRef.current = processor;
             processor.setEnabled(enabledRef.current);
           })
-          .catch(() => {
-            // Unsupported browser/device — huddle audio still works, just
-            // without noise suppression.
+          .catch((err) => {
+            // Surfaced (not swallowed) so a genuine attach failure is
+            // diagnosable — huddle audio still works, just unfiltered.
+            console.warn("Noise filter failed to attach:", err);
           });
       }
 
@@ -518,7 +519,10 @@ function HuddleControls({
             {settingsOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setSettingsOpen(false)} />
-                <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-md border border-[var(--color-line)] bg-white p-2 text-left shadow-lg">
+                {/* Opens upward into the video area: the huddle container is
+                    overflow-hidden, so a downward panel gets clipped at its
+                    bottom edge (and by the composer below). */}
+                <div className="absolute bottom-full right-0 z-50 mb-1 max-h-[70vh] w-56 overflow-y-auto rounded-md border border-[var(--color-line)] bg-white p-2 text-left shadow-lg">
                   <p className="px-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
                     Microphone
                   </p>

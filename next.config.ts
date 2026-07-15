@@ -21,6 +21,16 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "camera=(self), microphone=(self), geolocation=(), browsing-topics=()",
   },
+  // Cross-origin isolation, required so SharedArrayBuffer is available — the
+  // Krisp huddle noise filter's audio worklet needs it to actually process
+  // audio (without it, it loads and reports success but passes noise
+  // through). COEP is "credentialless" rather than "require-corp" so
+  // cross-origin images (link-preview thumbnails, Google avatars) still load
+  // — they're just fetched without credentials, which is fine for public
+  // images. WebRTC (huddle audio/video) and WebSockets (Pusher/LiveKit) are
+  // exempt from COEP, so transport is unaffected.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  { key: "Cross-Origin-Embedder-Policy", value: "credentialless" },
   {
     key: "Content-Security-Policy",
     value: [
@@ -36,9 +46,6 @@ const securityHeaders = [
       // script-src directly, which every browser does fall back to.
       `script-src 'self' 'unsafe-inline' blob:${isDev ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
-      // Belt-and-suspenders for browsers that DO support the more specific
-      // worklet-src directive.
-      "worklet-src 'self' blob:",
       // Pusher's WebSocket + HTTP-fallback transport, and LiveKit's signaling
       // WebSocket + REST calls (region lookup, connection validation) for
       // huddles. livekit.io (not *.livekit.cloud, the room server's own
