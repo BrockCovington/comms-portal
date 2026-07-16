@@ -56,6 +56,7 @@ model User {
   createdEmoji            CustomEmoji[]
   notificationPreference  NotificationPreference?
   channelPreferences      ChannelPreference[]
+  channelSections         ChannelSection[]
   scheduledMessages       ScheduledMessage[]
 }
 
@@ -452,11 +453,31 @@ model ChannelPreference {
   channelId String
   muted     Boolean            @default(false)
   level     ChannelNotifyLevel @default(MENTIONS)
+  // Which custom sidebar section (if any) this user filed this channel under.
+  // Null = the default "Channels" group. SetNull so deleting a section just
+  // returns its channels to the default group rather than cascading.
+  sectionId String?
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel         @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  section ChannelSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
 
   @@unique([userId, channelId])
+  @@index([userId])
+}
+
+// A user's custom sidebar section (personal — like Slack, sections organize
+// your own view of shared channels, they aren't workspace-wide).
+model ChannelSection {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channelPrefs ChannelPreference[]
+
   @@index([userId])
 }
 

@@ -10,6 +10,8 @@ export type ChannelWithUnread = {
   hasUnread: boolean;
   isStarred: boolean;
   muted: boolean;
+  // Custom sidebar section this user filed the channel under (null = default).
+  sectionId: string | null;
 };
 
 // Shared by the sidebar (src/app/(app)/layout.tsx) and the /unreads page —
@@ -43,7 +45,7 @@ export async function getChannelsWithUnread(userId: string): Promise<ChannelWith
   // "grouped query, not N+1" pattern used for thread previews. Starred
   // state is a third, similarly cheap lookup.
   const channelIds = channels.map((c) => c.id);
-  const [lastMessageRows, readRows, starredRows, mutedRows] = channelIds.length
+  const [lastMessageRows, readRows, starredRows, prefRows] = channelIds.length
     ? await Promise.all([
         prisma.message.groupBy({
           by: ["channelId"],
@@ -58,9 +60,10 @@ export async function getChannelsWithUnread(userId: string): Promise<ChannelWith
           where: { userId, channelId: { in: channelIds } },
           select: { channelId: true },
         }),
+        // One prefs query gives both mute state and section assignment.
         prisma.channelPreference.findMany({
-          where: { userId, channelId: { in: channelIds }, muted: true },
-          select: { channelId: true },
+          where: { userId, channelId: { in: channelIds } },
+          select: { channelId: true, muted: true, sectionId: true },
         }),
       ])
     : [[], [], [], []];
@@ -69,7 +72,8 @@ export async function getChannelsWithUnread(userId: string): Promise<ChannelWith
   );
   const lastReadAtByChannel = new Map(readRows.map((r) => [r.channelId, r.lastReadAt]));
   const starredChannelIds = new Set(starredRows.map((r) => r.channelId));
-  const mutedChannelIds = new Set(mutedRows.map((r) => r.channelId));
+  const mutedChannelIds = new Set(prefRows.filter((p) => p.muted).map((p) => p.channelId));
+  const sectionIdByChannel = new Map(prefRows.map((p) => [p.channelId, p.sectionId]));
 
   return channels
     .map(({ members, ...c }) => {
@@ -85,6 +89,7 @@ export async function getChannelsWithUnread(userId: string): Promise<ChannelWith
         hasUnread: !muted && !!lastMessageAt && (!lastReadAt || lastMessageAt > lastReadAt),
         isStarred: starredChannelIds.has(c.id),
         muted,
+        sectionId: sectionIdByChannel.get(c.id) ?? null,
       };
     })
     // Regular channels are already alphabetical from the query; DMs need

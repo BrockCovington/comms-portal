@@ -9,6 +9,7 @@ import { NotificationToasts } from "@/components/NotificationToasts";
 import { IncomingHuddle } from "@/components/IncomingHuddle";
 import { CustomEmojiProvider } from "@/components/CustomEmojiContext";
 import { getChannelsWithUnread } from "@/lib/channels";
+import { getChannelSections } from "@/lib/channelSections";
 import { getDmThreadsForUser } from "@/lib/dms";
 import { getThreadsForUser } from "@/lib/threads";
 import { getSavedMessagesForUser } from "@/lib/saved";
@@ -25,9 +26,10 @@ export default async function AppLayout({
   if (!session?.user?.id) redirect("/signin");
 
   const userId = session.user.id;
-  const [channelsWithUnread, dmThreads, threads, savedMessages, drafts, files, customEmoji] =
+  const [channelsWithUnread, channelSections, dmThreads, threads, savedMessages, drafts, files, customEmoji] =
     await Promise.all([
       getChannelsWithUnread(userId),
+      getChannelSections(userId),
       getDmThreadsForUser(userId),
       getThreadsForUser(userId),
       getSavedMessagesForUser(userId),
@@ -64,6 +66,7 @@ export default async function AppLayout({
         sidebar={
           <Sidebar
             channels={channelsWithUnread}
+            sections={channelSections}
             dmThreads={dmThreads}
             threads={threads}
             savedMessages={savedMessages}
