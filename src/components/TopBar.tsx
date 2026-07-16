@@ -1,6 +1,7 @@
 "use client";
 
 import { SearchBox } from "@/components/SearchBox";
+import { Avatar } from "@/components/Avatar";
 
 // A persistent full-width bar above the rail/sidebar/main — search plus the
 // current user's avatar. Deliberately doesn't fake browser back/forward or
@@ -13,14 +14,7 @@ export function TopBar({ user }: { user: { name: string; image: string | null } 
         <SearchBox />
       </div>
       <div className="flex shrink-0 items-center">
-        {user.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.image} alt={user.name} className="h-7 w-7 rounded-full object-cover" />
-        ) : (
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-accent)] text-xs font-semibold text-white">
-            {user.name.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <Avatar name={user.name} image={user.image} size={28} variant="solid" />
       </div>
     </div>
   );

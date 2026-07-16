@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { DmThreadSummary } from "@/lib/dms";
+import { Avatar } from "@/components/Avatar";
 
 function relativeTime(date: Date | string): string {
   const diffMs = Date.now() - new Date(date).getTime();
@@ -62,9 +63,8 @@ export function DmListColumn({
                     : "text-[var(--color-on-sidebar)] hover:bg-white/10"
                 }`}
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-xs font-semibold text-white">
-                  {t.name.charAt(0).toUpperCase()}
-                </span>
+                <Avatar name={t.name} image={t.image} size={32} variant="solid" />
+
                 <span className="min-w-0 flex-1">
                   <span className="flex items-baseline justify-between gap-2">
                     <span className={`truncate text-sm ${t.hasUnread ? "font-semibold text-white" : ""}`}>

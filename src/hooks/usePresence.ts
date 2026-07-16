@@ -7,7 +7,7 @@ function presenceChannelName(channelId: string): string {
   return `presence-channel-${channelId}`;
 }
 
-export type PresenceUser = { id: string; name: string | null };
+export type PresenceUser = { id: string; name: string | null; image: string | null };
 
 const TYPING_EXPIRY_MS = 3000;
 const TYPING_THROTTLE_MS = 2000;
@@ -33,19 +33,22 @@ export function usePresence(channelId: string, currentUserId: string) {
     const channel = subscribeChannel(channelName);
 
     const onSubscribed = (members: {
-      each: (cb: (member: { id: string; info: { name: string | null } }) => void) => void;
+      each: (cb: (member: { id: string; info: { name: string | null; image: string | null } }) => void) => void;
     }) => {
       const users: PresenceUser[] = [];
       members.each((m) => {
-        if (m.id !== currentUserId) users.push({ id: m.id, name: m.info?.name ?? null });
+        if (m.id !== currentUserId)
+          users.push({ id: m.id, name: m.info?.name ?? null, image: m.info?.image ?? null });
       });
       setOnline(users);
     };
 
-    const onMemberAdded = (member: { id: string; info: { name: string | null } }) => {
+    const onMemberAdded = (member: { id: string; info: { name: string | null; image: string | null } }) => {
       if (member.id === currentUserId) return;
       setOnline((prev) =>
-        prev.some((u) => u.id === member.id) ? prev : [...prev, { id: member.id, name: member.info?.name ?? null }]
+        prev.some((u) => u.id === member.id)
+          ? prev
+          : [...prev, { id: member.id, name: member.info?.name ?? null, image: member.info?.image ?? null }]
       );
     };
 
@@ -57,7 +60,7 @@ export function usePresence(channelId: string, currentUserId: string) {
       if (payload.userId === currentUserId) return;
       setTypingUsers((prev) => {
         if (prev.some((u) => u.id === payload.userId)) return prev;
-        return [...prev, { id: payload.userId, name: payload.name }];
+        return [...prev, { id: payload.userId, name: payload.name, image: null }];
       });
       const existing = typingTimers.current.get(payload.userId);
       if (existing) clearTimeout(existing);

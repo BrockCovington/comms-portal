@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ChannelMember } from "@/hooks/useChannelMembers";
+import { Avatar } from "@/components/Avatar";
 
 type OrgUser = { id: string; name: string | null; email: string; image: string | null };
 
@@ -101,9 +102,8 @@ export function AddMembersPanel({
           <ul className="mt-1 max-h-24 space-y-1 overflow-y-auto">
             {members.map((m) => (
               <li key={m.userId} className="flex items-center gap-2 text-sm">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-soft)] text-[10px] font-semibold text-[var(--color-accent)]">
-                  {(m.user.name ?? m.user.email).charAt(0).toUpperCase()}
-                </span>
+                <Avatar name={m.user.name ?? m.user.email} image={m.user.image} size={20} />
+
                 <span className="min-w-0 flex-1 truncate">{m.user.name ?? m.user.email}</span>
                 {isAdmin && onRemove && m.userId !== currentUserId && (
                   <button
@@ -141,9 +141,8 @@ export function AddMembersPanel({
                 disabled={adding !== null}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-[var(--color-accent-soft)] disabled:opacity-50"
               >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-soft)] text-xs font-semibold text-[var(--color-accent)]">
-                  {(u.name ?? u.email).charAt(0).toUpperCase()}
-                </span>
+                <Avatar name={u.name ?? u.email} image={u.image} size={24} />
+
                 <span className="min-w-0 flex-1 truncate">{u.name ?? u.email}</span>
                 {adding === u.id && (
                   <span className="text-xs text-[var(--color-ink-soft)]">…</span>

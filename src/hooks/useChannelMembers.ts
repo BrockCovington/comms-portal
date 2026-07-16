@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 export type ChannelMember = {
   userId: string;
-  user: { id: string; name: string | null; email: string };
+  user: { id: string; name: string | null; email: string; image: string | null };
 };
 
 export function useChannelMembers(channelId: string) {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMobileNav } from "@/components/MobileNavContext";
+import { Avatar } from "@/components/Avatar";
 
 type OrgUser = { id: string; name: string | null; email: string; image: string | null };
 
@@ -94,9 +95,8 @@ export function NewDmView() {
               disabled={starting !== null}
               className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-[var(--color-accent-soft)] disabled:opacity-50"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-soft)] text-xs font-semibold text-[var(--color-accent)]">
-                {(u.name ?? u.email).charAt(0).toUpperCase()}
-              </span>
+              <Avatar name={u.name ?? u.email} image={u.image} size={32} />
+
               <span className="min-w-0 flex-1 truncate text-[var(--color-ink)]">
                 {u.name ?? u.email}
               </span>

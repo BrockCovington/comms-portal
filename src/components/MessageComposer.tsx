@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { splitMentions } from "@/lib/mentions";
 import { FullEmojiPicker } from "@/components/FullEmojiPicker";
+import { Avatar } from "@/components/Avatar";
 
 const DRAFT_SAVE_DEBOUNCE_MS = 1000;
 
-type ComposerMember = { id: string; name: string | null; email: string };
+type ComposerMember = { id: string; name: string | null; email: string; image: string | null };
 
 // Matches a trailing "@query" at the cursor, up to two words — this app's
 // display names are Google-OAuth "First Last", so two words covers a full
@@ -363,9 +364,7 @@ export function MessageComposer({
                   i === highlightIndex ? "bg-[var(--color-accent-soft)]" : "hover:bg-[var(--color-accent-soft)]"
                 }`}
               >
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-soft)] text-[10px] font-semibold text-[var(--color-accent)]">
-                  {(m.name ?? m.email).charAt(0).toUpperCase()}
-                </span>
+                <Avatar name={m.name ?? m.email} image={m.image} size={20} />
                 {m.name ?? m.email}
               </button>
             ))}

@@ -8,3 +8,13 @@ export function otherMemberLabel(
   const other = members.find((m) => m.userId !== currentUserId);
   return other?.user.name ?? other?.user.email ?? "Direct message";
 }
+
+// Companion to otherMemberLabel: the other participant's avatar, so a DM row
+// shows their picture rather than an initial of their name.
+export function otherMemberImage(
+  members: { userId: string; user: { image: string | null } }[],
+  currentUserId: string
+): string | null {
+  const other = members.find((m) => m.userId !== currentUserId);
+  return other?.user.image ?? null;
+}

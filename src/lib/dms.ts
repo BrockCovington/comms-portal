@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { decryptMessage } from "@/lib/crypto";
-import { otherMemberLabel } from "@/lib/dm";
+import { otherMemberLabel, otherMemberImage } from "@/lib/dm";
 
 export type DmThreadSummary = {
   channelId: string;
   name: string;
+  image: string | null;
   hasUnread: boolean;
   lastMessageAt: Date | null;
   lastMessagePreview: string;
@@ -23,7 +24,7 @@ export async function getDmThreadsForUser(userId: string): Promise<DmThreadSumma
     where: { isDm: true, members: { some: { userId } } },
     select: {
       id: true,
-      members: { select: { userId: true, user: { select: { name: true, email: true } } } },
+      members: { select: { userId: true, user: { select: { name: true, email: true, image: true } } } },
     },
   });
   if (channels.length === 0) return [];
@@ -57,6 +58,7 @@ export async function getDmThreadsForUser(userId: string): Promise<DmThreadSumma
       return {
         channelId: c.id,
         name: otherMemberLabel(c.members, userId),
+        image: otherMemberImage(c.members, userId),
         hasUnread: !!last && (!lastReadAt || last.createdAt > lastReadAt),
         lastMessageAt: last?.createdAt ?? null,
         lastMessagePreview: last

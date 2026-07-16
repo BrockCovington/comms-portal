@@ -27,6 +27,16 @@ model User {
   role          Role      @default(EMPLOYEE)
   createdAt     DateTime  @default(now())
 
+  // Custom (uploaded) profile picture. When set, `image` holds the
+  // access-checked proxy path (GET /api/users/:id/avatar); the fields below
+  // are server-only Blob bookkeeping the proxy uses to stream the bytes and
+  // clean up on replace/remove. `oauthImage` preserves the original OAuth
+  // (Google) picture so removing a custom one falls back to it, not to blank.
+  avatarBlobUrl  String?
+  avatarBlobPath String?
+  avatarMimeType String?
+  oauthImage     String?
+
   accounts        Account[]
   sessions        Session[]
   memberships     ChannelMember[]

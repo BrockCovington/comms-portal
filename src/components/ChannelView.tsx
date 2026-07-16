@@ -10,6 +10,7 @@ import { MessageComposer } from "@/components/MessageComposer";
 import { ThreadPanel } from "@/components/ThreadPanel";
 import { AddMembersPanel } from "@/components/AddMembersPanel";
 import { PinnedPanel } from "@/components/PinnedPanel";
+import { Avatar } from "@/components/Avatar";
 import { ChannelNotifyMenu } from "@/components/ChannelNotifyMenu";
 import { ScheduledPanel } from "@/components/ScheduledPanel";
 import { HuddleBar } from "@/components/HuddleBar";
@@ -113,7 +114,7 @@ export function ChannelView({
   }
 
   const composerMembers = useMemo(
-    () => members.map((m) => ({ id: m.user.id, name: m.user.name, email: m.user.email })),
+    () => members.map((m) => ({ id: m.user.id, name: m.user.name, email: m.user.email, image: m.user.image })),
     [members]
   );
   const memberNames = useMemo(
@@ -216,12 +217,8 @@ export function ChannelView({
             {online.length > 0 && (
               <div className="flex items-center -space-x-2">
                 {online.slice(0, 5).map((u) => (
-                  <span
-                    key={u.id}
-                    title={`${u.name ?? "Someone"} · online`}
-                    className="relative inline-flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[var(--color-accent-soft)] text-[10px] font-semibold text-[var(--color-accent)]"
-                  >
-                    {(u.name ?? "?").charAt(0).toUpperCase()}
+                  <span key={u.id} title={`${u.name ?? "Someone"} · online`} className="relative inline-block">
+                    <Avatar name={u.name} image={u.image} size={24} className="border-2 border-white" />
                     <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-white bg-green-500" />
                   </span>
                 ))}

@@ -18,7 +18,7 @@ export function ThreadPanel({
   parentId: string;
   currentUserId: string;
   onClose: () => void;
-  members?: { id: string; name: string | null; email: string }[];
+  members?: { id: string; name: string | null; email: string; image: string | null }[];
   memberNames?: string[];
   highlightMessageId?: string | null;
 }) {

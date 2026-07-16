@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationPrefsPanel } from "@/components/NotificationPrefsPanel";
+import { ProfilePanel } from "@/components/ProfilePanel";
+import { Avatar } from "@/components/Avatar";
 
 function railItemClass(active: boolean) {
   return `flex w-16 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 transition ${
@@ -50,13 +52,14 @@ export function IconRail({
 }: {
   workspaceName: string;
   currentUserId: string;
-  user: { name: string; image: string | null };
+  user: { name: string; email: string; image: string | null };
   signOutAction: () => Promise<void>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const [notifPrefsOpen, setNotifPrefsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   // Just the badge count, not the dropdown — Activity is now a full page
   // (src/app/(app)/activity/page.tsx), this hook call only drives the
@@ -163,15 +166,23 @@ export function IconRail({
         </button>
       </div>
 
-      <div className="mt-1">
-        {user.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.image} alt={user.name} className="h-8 w-8 rounded-full object-cover" />
-        ) : (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-accent)] text-xs font-semibold text-white">
-            {user.name.charAt(0).toUpperCase()}
-          </div>
+      <div className="relative mt-1">
+        {profileOpen && (
+          <ProfilePanel
+            name={user.name}
+            email={user.email}
+            image={user.image}
+            onClose={() => setProfileOpen(false)}
+          />
         )}
+        <button
+          onClick={() => setProfileOpen((v) => !v)}
+          className="rounded-full ring-2 ring-transparent transition hover:ring-white/40"
+          aria-label="Your profile"
+          title="Your profile"
+        >
+          <Avatar name={user.name} image={user.image} size={32} variant="solid" />
+        </button>
       </div>
     </aside>
   );

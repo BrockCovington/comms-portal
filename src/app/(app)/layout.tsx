@@ -40,6 +40,7 @@ export default async function AppLayout({
     ]);
   const user = {
     name: session.user.name ?? session.user.email ?? "You",
+    email: session.user.email ?? "",
     image: session.user.image ?? null,
   };
 

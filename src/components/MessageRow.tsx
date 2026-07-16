@@ -7,6 +7,7 @@ import { FullEmojiPicker } from "@/components/FullEmojiPicker";
 import { EditHistory } from "@/components/EditHistory";
 import { ForwardDialog } from "@/components/ForwardDialog";
 import { useCustomEmoji } from "@/components/CustomEmojiContext";
+import { Avatar } from "@/components/Avatar";
 
 // The embedded original shown on a forwarded message.
 function ForwardedEmbed({ forwarded }: { forwarded: NonNullable<ChatMessage["forwarded"]> }) {
@@ -255,9 +256,8 @@ export function MessageRow({
             : ""
       } ${rowOpensThread ? "cursor-pointer" : ""}`}
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[var(--color-accent-soft)] text-sm font-semibold text-[var(--color-accent)]">
-        {(message.user.name ?? "?").charAt(0).toUpperCase()}
-      </div>
+      <Avatar name={message.user.name} image={message.user.image} size={36} shape="square" />
+
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <span className="text-sm font-semibold text-[var(--color-ink)]">
