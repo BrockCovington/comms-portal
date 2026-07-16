@@ -55,6 +55,7 @@ export function ChannelView({
     loadingMore,
     hasMore,
     error,
+    readReceipts,
     sendMessage,
     editMessage,
     deleteMessage,
@@ -64,6 +65,11 @@ export function ChannelView({
     togglePin,
     loadOlder,
   } = useMessages(channelId, currentUserId, activeThreadId);
+
+  // For a DM, the other participant's latest read time (ISO). ISO strings sort
+  // chronologically, so the max is the newest. Null for non-DMs / never-read —
+  // MessageList uses it to place a single "Seen" under the last read message.
+  const seenAt = isDm ? Object.values(readReceipts).sort().at(-1) ?? null : null;
   const {
     members,
     addMember,
@@ -315,6 +321,7 @@ export function ChannelView({
           onToggleSave={toggleSave}
           onTogglePin={togglePin}
           highlightMessageId={rootHighlightId}
+          seenAt={seenAt}
         />
 
         {error && (

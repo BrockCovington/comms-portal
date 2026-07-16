@@ -154,10 +154,23 @@ export async function GET(request: Request, { params }: RouteContext) {
       };
     });
 
+  // Read receipts (DMs only): the other participant's last-read time, so the
+  // client can show "Seen" under the most recent message they've read. Only
+  // fetched for DMs — that's the only place receipts render.
+  const readReceipts = access.channel.isDm
+    ? (
+        await prisma.channelRead.findMany({
+          where: { channelId, userId: { not: userId! } },
+          select: { userId: true, lastReadAt: true },
+        })
+      ).map((r) => ({ userId: r.userId, lastReadAt: r.lastReadAt.toISOString() }))
+    : [];
+
   return NextResponse.json({
     messages,
     hasMore,
     nextCursor: hasMore ? messages[0].id : null,
+    readReceipts,
   });
 }
 

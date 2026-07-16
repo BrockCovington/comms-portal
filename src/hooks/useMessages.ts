@@ -78,6 +78,9 @@ export function useMessages(
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Read receipts (DMs): other members' last-read timestamps (ISO), keyed by
+  // userId. Drives the "Seen" indicator. Never includes the current user.
+  const [readReceipts, setReadReceipts] = useState<Record<string, string>>({});
 
   const activeThreadIdRef = useRef(activeThreadId);
   useEffect(() => {
@@ -97,6 +100,11 @@ export function useMessages(
       const data = await res.json();
       setMessages(data.messages as ChatMessage[]);
       setHasMore(!!data.hasMore);
+      const receipts: Record<string, string> = {};
+      for (const r of (data.readReceipts ?? []) as { userId: string; lastReadAt: string }[]) {
+        receipts[r.userId] = r.lastReadAt;
+      }
+      setReadReceipts(receipts);
       setError(null);
     } catch {
       setError("Network error");
@@ -178,11 +186,23 @@ export function useMessages(
       );
     };
 
+    // Someone on the other side of a DM caught up — advance their read time
+    // (monotonically; a stale/out-of-order event never rolls "Seen" back).
+    const onReadReceipt = (payload: { userId: string; readAt: string }) => {
+      if (payload.userId === currentUserId) return;
+      setReadReceipts((prev) => {
+        const existing = prev[payload.userId];
+        if (existing && existing >= payload.readAt) return prev;
+        return { ...prev, [payload.userId]: payload.readAt };
+      });
+    };
+
     channel.bind("new-message", onNewMessage);
     channel.bind("new-reply", onNewReply);
     channel.bind("message-updated", onMessageUpdated);
     channel.bind("reaction-updated", onReactionUpdated);
     channel.bind("pin-updated", onPinUpdated);
+    channel.bind("read-receipt", onReadReceipt);
 
     return () => {
       channel.unbind("new-message", onNewMessage);
@@ -190,6 +210,7 @@ export function useMessages(
       channel.unbind("message-updated", onMessageUpdated);
       channel.unbind("reaction-updated", onReactionUpdated);
       channel.unbind("pin-updated", onPinUpdated);
+      channel.unbind("read-receipt", onReadReceipt);
       unsubscribeChannel(channelName);
     };
   }, [channelId, currentUserId, refresh]);
@@ -341,6 +362,7 @@ export function useMessages(
     loadingMore,
     hasMore,
     error,
+    readReceipts,
     sendMessage,
     editMessage,
     deleteMessage,

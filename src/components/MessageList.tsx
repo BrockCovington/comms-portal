@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@/hooks/useMessages";
 import { MessageRow } from "@/components/MessageRow";
 
@@ -21,6 +21,7 @@ export function MessageList({
   onToggleSave,
   onTogglePin,
   highlightMessageId,
+  seenAt,
 }: {
   channelId: string;
   messages: ChatMessage[];
@@ -38,6 +39,9 @@ export function MessageList({
   onToggleSave?: (messageId: string) => Promise<void>;
   onTogglePin?: (messageId: string) => Promise<void>;
   highlightMessageId?: string | null;
+  // DM read receipts: the other person's latest read time (ISO). A single
+  // "Seen" is shown under the most recent of my messages at or before it.
+  seenAt?: string | null;
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -149,6 +153,23 @@ export function MessageList({
     );
   }
 
+  // Anchor the "Seen" line under the newest of MY messages the other person
+  // has read (createdAt at or before their last-read time). Messages are in
+  // display order (oldest→newest), so the last match wins.
+  let seenAnchorId: string | null = null;
+  if (seenAt) {
+    const seenTime = new Date(seenAt).getTime();
+    for (const m of messages) {
+      if (
+        m.user.id === currentUserId &&
+        !m.deletedAt &&
+        new Date(m.createdAt).getTime() <= seenTime
+      ) {
+        seenAnchorId = m.id;
+      }
+    }
+  }
+
   return (
     <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-5 py-4">
       <div ref={topSentinelRef} />
@@ -159,22 +180,29 @@ export function MessageList({
       )}
       <ul className="space-y-4">
         {messages.map((m) => (
-          <MessageRow
-            key={m.id}
-            channelId={channelId}
-            message={m}
-            currentUserId={currentUserId}
-            onOpenThread={onOpenThread}
-            isActiveThread={m.id === activeThreadId}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            memberNames={memberNames}
-            onToggleReaction={onToggleReaction}
-            onToggleSave={onToggleSave}
-            onTogglePin={onTogglePin}
-            htmlId={`msg-root-${m.id}`}
-            isHighlighted={m.id === flashId}
-          />
+          <Fragment key={m.id}>
+            <MessageRow
+              channelId={channelId}
+              message={m}
+              currentUserId={currentUserId}
+              onOpenThread={onOpenThread}
+              isActiveThread={m.id === activeThreadId}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              memberNames={memberNames}
+              onToggleReaction={onToggleReaction}
+              onToggleSave={onToggleSave}
+              onTogglePin={onTogglePin}
+              htmlId={`msg-root-${m.id}`}
+              isHighlighted={m.id === flashId}
+            />
+            {m.id === seenAnchorId && seenAt && (
+              <li className="-mt-2 pr-1 text-right text-[11px] text-[var(--color-ink-soft)]">
+                Seen{" "}
+                {new Date(seenAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </li>
+            )}
+          </Fragment>
         ))}
       </ul>
       <div ref={bottomRef} />
