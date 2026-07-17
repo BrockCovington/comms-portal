@@ -1,0 +1,31 @@
+name: Dispatch scheduled messages & workflows
+
+# Pings the dispatcher so scheduled messages and recurring Workflows fire
+# automatically. The endpoint is catch-up based (it fires anything whose time
+# has passed and advances it), so a coarse cadence still delivers everything —
+# just up to one interval late, never skipped.
+#
+# GitHub's scheduled-workflow minimum is every 5 minutes, and runs are
+# best-effort (they can be delayed under load). For to-the-minute precision use
+# an external pinger (e.g. cron-job.org) against the same URL instead.
+#
+# Requires a repo secret named CRON_SECRET (Settings → Secrets and variables →
+# Actions) matching CRON_SECRET in Vercel.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping dispatcher
+        run: |
+          code=$(curl -s -o /tmp/dispatch.out -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://comms-portal-five.vercel.app/api/scheduled/dispatch)
+          echo "HTTP $code"
+          cat /tmp/dispatch.out; echo
+          test "$code" = "200"
