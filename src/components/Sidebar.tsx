@@ -311,6 +311,7 @@ export function Sidebar({
             <QuickLink href="/threads" icon="⚭" label="Threads" active={pathname === "/threads"} />
             <QuickLink href="/canvas" icon="📝" label="Canvases" active={pathname?.startsWith("/canvas") ?? false} />
             <QuickLink href="/lists" icon="☑" label="Lists" active={pathname?.startsWith("/lists") ?? false} />
+            <QuickLink href="/workflows" icon="⚙" label="Workflows" active={pathname?.startsWith("/workflows") ?? false} />
             <QuickLink href="/drafts" icon="✎" label="Drafts & sent" active={pathname === "/drafts"} />
           </ul>
 

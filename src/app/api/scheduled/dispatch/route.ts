@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { decryptMessage } from "@/lib/crypto";
 import { deliverMessage } from "@/lib/deliver";
+import { computeNextRun } from "@/lib/workflows";
 
 const BATCH = 200;
 
 // POST /api/scheduled/dispatch — delivers every scheduled message whose time
-// has come. Meant to be hit by a scheduler (external cron) every minute; see
-// the deploy notes. Protected by CRON_SECRET: without a matching bearer
-// token it refuses (fail closed — this endpoint sends messages as users).
+// has come, and fires every recurring Workflow that's due. Meant to be hit by a
+// scheduler (external cron) every minute; see the deploy notes. Protected by
+// CRON_SECRET: without a matching bearer token it refuses (fail closed — this
+// endpoint sends messages as users).
 export async function POST(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
@@ -90,5 +92,83 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ delivered, failed, considered: due.length });
+  // --- Recurring workflows -------------------------------------------------
+  // Every enabled workflow whose nextRunAt has passed fires once, then advances
+  // to its next occurrence. Advancing nextRunAt *before* delivering doubles as
+  // the claim: an overlapping dispatch run only proceeds if its updateMany
+  // (matching the old nextRunAt) actually moved the row.
+  const dueWorkflows = await prisma.workflow.findMany({
+    where: { enabled: true, nextRunAt: { lte: now } },
+    orderBy: { nextRunAt: "asc" },
+    take: BATCH,
+    select: {
+      id: true,
+      channelId: true,
+      createdById: true,
+      body: true,
+      frequency: true,
+      dayOfWeek: true,
+      hour: true,
+      minute: true,
+      timezone: true,
+      nextRunAt: true,
+    },
+  });
+
+  let workflowsFired = 0;
+  let workflowsFailed = 0;
+
+  for (const wf of dueWorkflows) {
+    const nextRunAt = computeNextRun(wf, now);
+    const claim = await prisma.workflow.updateMany({
+      where: { id: wf.id, enabled: true, nextRunAt: wf.nextRunAt },
+      data: { nextRunAt, lastRunAt: now, runCount: { increment: 1 } },
+    });
+    if (claim.count !== 1) continue; // another run already advanced it
+
+    try {
+      // The author must still be able to post here. If the channel is gone /
+      // archived or they've lost membership, disable the workflow rather than
+      // failing every minute forever.
+      const [channel, membership] = await Promise.all([
+        prisma.channel.findUnique({
+          where: { id: wf.channelId },
+          select: { name: true, isDm: true, isPrivate: true, archivedAt: true },
+        }),
+        prisma.channelMember.findUnique({
+          where: { channelId_userId: { channelId: wf.channelId, userId: wf.createdById } },
+          select: { id: true },
+        }),
+      ]);
+
+      const authorCanPost =
+        channel && !channel.archivedAt && (!(channel.isPrivate || channel.isDm) || membership);
+      if (!authorCanPost) {
+        await prisma.workflow.update({ where: { id: wf.id }, data: { enabled: false } }).catch(() => {});
+        workflowsFailed++;
+        continue;
+      }
+
+      await deliverMessage({
+        channelId: wf.channelId,
+        userId: wf.createdById,
+        body: decryptMessage(wf.body),
+        channel: { name: channel.name, isDm: channel.isDm },
+      });
+      workflowsFired++;
+    } catch (err) {
+      console.error("Workflow dispatch failed for", wf.id, err);
+      workflowsFailed++;
+      // nextRunAt already advanced — we skip this occurrence rather than retry.
+    }
+  }
+
+  return NextResponse.json({
+    delivered,
+    failed,
+    considered: due.length,
+    workflowsFired,
+    workflowsFailed,
+    workflowsConsidered: dueWorkflows.length,
+  });
 }

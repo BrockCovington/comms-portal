@@ -115,6 +115,13 @@ export function IconRail({
     if (res.ok && data.id) router.push(`/lists/${data.id}`);
   }
 
+  // A workflow needs a channel + schedule up front, so (unlike Canvas/List)
+  // this opens the builder rather than creating an empty record first.
+  function createWorkflow() {
+    setCreateOpen(false);
+    router.push("/workflows/new");
+  }
+
   function startHuddle() {
     setCreateOpen(false);
     if (currentChannelId) startOrJoin(currentChannelId, "Huddle");
@@ -276,6 +283,7 @@ export function IconRail({
             onHuddle={startHuddle}
             onCanvas={createCanvas}
             onList={createList}
+            onWorkflow={createWorkflow}
             onInvite={invitePeople}
           />
         )}
@@ -383,6 +391,7 @@ function CreateMenu({
   onHuddle,
   onCanvas,
   onList,
+  onWorkflow,
   onInvite,
 }: {
   onClose: () => void;
@@ -391,6 +400,7 @@ function CreateMenu({
   onHuddle: () => void;
   onCanvas: () => void;
   onList: () => void;
+  onWorkflow: () => void;
   onInvite: () => void;
 }) {
   return (
@@ -438,7 +448,7 @@ function CreateMenu({
           color="#b91c1c"
           title="Workflow"
           subtitle="Automate everyday tasks"
-          soon
+          onClick={onWorkflow}
         />
         <div className="my-1 border-t border-[var(--color-line)]" />
         <CreateRow
