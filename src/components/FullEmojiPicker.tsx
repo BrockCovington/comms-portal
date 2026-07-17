@@ -25,7 +25,7 @@ export function FullEmojiPicker({
           onPick(token);
           onClose();
         }}
-        className={`absolute right-0 z-50 h-96 w-80 rounded-md border border-[var(--color-line)] bg-white shadow-lg ${
+        className={`absolute right-0 z-50 h-96 w-80 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] shadow-lg ${
           placement === "up" ? "bottom-full mb-1" : "top-full mt-1"
         }`}
       />

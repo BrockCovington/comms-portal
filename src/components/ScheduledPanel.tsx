@@ -51,7 +51,7 @@ export function ScheduledPanel({
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute bottom-full left-0 z-50 mb-1 max-h-80 w-96 overflow-y-auto rounded-md border border-[var(--color-line)] bg-white p-2 text-[var(--color-ink)] shadow-lg">
+      <div className="absolute bottom-full left-0 z-50 mb-1 max-h-80 w-96 overflow-y-auto rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-2 text-[var(--color-ink)] shadow-lg">
         <div className="flex items-center justify-between px-1 pb-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
             Scheduled messages

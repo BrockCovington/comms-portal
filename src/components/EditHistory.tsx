@@ -45,7 +45,7 @@ export function EditHistory({
       {/* Opens upward: edit history is most often viewed on a recent message
           sitting just above the composer, where a downward popover would run
           off the bottom of the viewport. */}
-      <div className="absolute bottom-full left-0 z-50 mb-1 max-h-96 w-80 overflow-y-auto rounded-md border border-[var(--color-line)] bg-white p-2 text-[var(--color-ink)] shadow-lg">
+      <div className="absolute bottom-full left-0 z-50 mb-1 max-h-96 w-80 overflow-y-auto rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-2 text-[var(--color-ink)] shadow-lg">
         <div className="flex items-center justify-between px-1 pb-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
             Edit history

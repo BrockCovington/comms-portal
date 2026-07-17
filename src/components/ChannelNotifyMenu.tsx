@@ -59,7 +59,7 @@ export function ChannelNotifyMenu({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full z-50 mt-1 w-60 rounded-md border border-[var(--color-line)] bg-white p-2 text-[var(--color-ink)] shadow-lg">
+          <div className="absolute right-0 top-full z-50 mt-1 w-60 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-2 text-[var(--color-ink)] shadow-lg">
             <label className="flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm">
               <span>Mute this channel</span>
               <input

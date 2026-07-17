@@ -89,7 +89,7 @@ export function DmListColumn({
                   </span>
                 </span>
                 {t.hasUnread && !active && (
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-white" />
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-surface)]" />
                 )}
               </Link>
             </li>

@@ -144,7 +144,7 @@ export function IncomingHuddle({ currentUserId }: { currentUserId: string }) {
       {invites.map((inv) => (
         <div
           key={inv.key}
-          className="rounded-lg border border-[var(--color-line)] bg-white p-3 shadow-lg"
+          className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-3 shadow-lg"
         >
           <p className="text-sm text-[var(--color-ink)]">
             <span aria-hidden>🎧</span> <span className="font-semibold">{inv.actorName}</span> started a

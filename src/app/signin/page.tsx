@@ -9,7 +9,7 @@ export default async function SignInPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--color-rail)] p-6">
-      <div className="w-full max-w-sm rounded-2xl border border-[var(--color-line)] bg-white p-8 shadow-sm">
+      <div className="w-full max-w-sm rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-8 shadow-sm">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/syndica-logo.svg" alt="Syndica" className="mb-6 h-8 w-auto" />
         <h1 className="text-xl font-semibold text-[var(--color-ink)]">
@@ -28,7 +28,7 @@ export default async function SignInPage() {
         >
           <button
             type="submit"
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--color-ink)] transition hover:bg-[var(--color-rail)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+            className="flex w-full items-center justify-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-2.5 text-sm font-medium text-[var(--color-ink)] transition hover:bg-[var(--color-rail)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
             <GoogleGlyph />
             Continue with Google

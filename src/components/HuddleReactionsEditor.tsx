@@ -24,7 +24,7 @@ export function HuddleReactionsEditor({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-lg border border-[var(--color-line)] bg-white shadow-xl">
+      <div className="relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] shadow-xl">
         <div className="flex items-center justify-between border-b border-[var(--color-line)] px-4 py-3">
           <h2 className="text-sm font-semibold text-[var(--color-ink)]">Huddle reactions</h2>
           <button

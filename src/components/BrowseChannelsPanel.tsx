@@ -77,7 +77,7 @@ export function BrowseChannelsPanel({ onClose }: { onClose: () => void }) {
       {/* Same click-outside-to-close backdrop pattern used across this app's
           anchored pickers (NewDmPicker, AddMembersPanel, EmojiPicker). */}
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute left-0 top-full z-50 mt-1 w-80 overflow-hidden rounded-md border border-[var(--color-line)] bg-white text-[var(--color-ink)] shadow-lg">
+      <div className="absolute left-0 top-full z-50 mt-1 w-80 overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-ink)] shadow-lg">
         <div className="border-b border-[var(--color-line)] p-2">
           <input
             autoFocus

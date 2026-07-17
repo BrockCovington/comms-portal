@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationPrefsPanel } from "@/components/NotificationPrefsPanel";
 import { ProfilePanel } from "@/components/ProfilePanel";
+import { AppearancePanel } from "@/components/AppearancePanel";
 import { Avatar } from "@/components/Avatar";
 
 function railItemClass(active: boolean) {
@@ -59,6 +60,7 @@ export function IconRail({
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const [notifPrefsOpen, setNotifPrefsOpen] = useState(false);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   // Just the badge count, not the dropdown — Activity is now a full page
@@ -136,12 +138,18 @@ export function IconRail({
             {/* Fixed, anchored just right of the rail: the rail is a narrow
                 overflow-y-auto column, so an absolute menu centered on it
                 spills off the left edge of the screen and gets clipped. */}
-            <div className="fixed bottom-4 left-[5.5rem] z-50 w-44 rounded-md border border-[var(--color-line)] bg-white p-1 text-left shadow-lg">
+            <div className="fixed bottom-4 left-[5.5rem] z-50 w-44 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-1 text-left shadow-lg">
               <button
                 onClick={() => { setMoreOpen(false); setNotifPrefsOpen(true); }}
                 className="block w-full rounded px-2 py-1.5 text-left text-xs text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
               >
                 Notifications
+              </button>
+              <button
+                onClick={() => { setMoreOpen(false); setAppearanceOpen(true); }}
+                className="block w-full rounded px-2 py-1.5 text-left text-xs text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
+              >
+                Appearance
               </button>
               <form action={signOutAction}>
                 <button
@@ -155,6 +163,7 @@ export function IconRail({
           </>
         )}
         {notifPrefsOpen && <NotificationPrefsPanel onClose={() => setNotifPrefsOpen(false)} />}
+        {appearanceOpen && <AppearancePanel onClose={() => setAppearanceOpen(false)} />}
         <button
           onClick={() => setMoreOpen((v) => !v)}
           className={railItemClass(moreOpen)}

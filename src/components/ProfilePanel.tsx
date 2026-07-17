@@ -70,7 +70,7 @@ export function ProfilePanel({
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="fixed bottom-4 left-[5.5rem] z-50 w-64 rounded-md border border-[var(--color-line)] bg-white p-4 text-[var(--color-ink)] shadow-lg">
+      <div className="fixed bottom-4 left-[5.5rem] z-50 w-64 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-4 text-[var(--color-ink)] shadow-lg">
         <div className="flex flex-col items-center text-center">
           <Avatar name={name} image={preview} size={72} variant="solid" />
           <p className="mt-2 text-sm font-semibold">{name}</p>

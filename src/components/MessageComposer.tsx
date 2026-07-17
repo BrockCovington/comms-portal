@@ -352,7 +352,7 @@ export function MessageComposer({
       )}
       <div className="relative rounded-lg border border-[var(--color-line)] focus-within:border-[var(--color-accent)]">
         {mentionOpen && (
-          <div className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-40 overflow-y-auto rounded-md border border-[var(--color-line)] bg-white shadow-lg">
+          <div className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-40 overflow-y-auto rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] shadow-lg">
             {candidates.map((m, i) => (
               <button
                 key={m.id}
@@ -479,7 +479,7 @@ function ScheduleMenu({ onPick, onClose }: { onPick: (d: Date) => void; onClose:
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute bottom-full right-0 z-50 mb-1 w-56 rounded-md border border-[var(--color-line)] bg-white p-1 text-[var(--color-ink)] shadow-lg">
+      <div className="absolute bottom-full right-0 z-50 mb-1 w-56 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-1 text-[var(--color-ink)] shadow-lg">
         <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
           Schedule message
         </p>

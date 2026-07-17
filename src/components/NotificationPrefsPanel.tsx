@@ -72,7 +72,7 @@ export function NotificationPrefsPanel({ onClose }: { onClose: () => void }) {
           which would clip an absolutely-positioned popover to the rail's
           narrow width. Anchored just to the right of the rail, near the
           bottom where the "More" button lives. */}
-      <div className="fixed bottom-4 left-[5.5rem] z-50 w-72 rounded-md border border-[var(--color-line)] bg-white p-3 text-[var(--color-ink)] shadow-lg">
+      <div className="fixed bottom-4 left-[5.5rem] z-50 w-72 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-3 text-[var(--color-ink)] shadow-lg">
         <h3 className="text-sm font-semibold">Notifications</h3>
 
         <div className="mt-3">

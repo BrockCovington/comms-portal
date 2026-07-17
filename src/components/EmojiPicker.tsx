@@ -22,7 +22,7 @@ export function EmojiPicker({
     <>
       {/* Same click-outside-to-close backdrop pattern used elsewhere. */}
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute bottom-full right-0 z-50 mb-1 flex items-center gap-1 rounded-md border border-[var(--color-line)] bg-white p-1.5 shadow-lg">
+      <div className="absolute bottom-full right-0 z-50 mb-1 flex items-center gap-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-1.5 shadow-lg">
         {reactions.map((token) => (
           <button
             key={token}

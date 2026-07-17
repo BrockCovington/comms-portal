@@ -139,7 +139,7 @@ function HuddleDock({
   const openChannel = useCallback(() => router.push(`/c/${channelId}`), [router, channelId]);
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-[24rem] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto rounded-lg bg-white shadow-2xl">
+    <div className="fixed bottom-4 right-4 z-50 w-[24rem] max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto rounded-lg bg-[var(--color-surface)] shadow-2xl">
       {error ? (
         <div className="rounded-lg border border-[var(--color-line)] p-4 text-sm">
           <p className="text-red-600">{error}</p>

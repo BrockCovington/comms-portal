@@ -60,7 +60,7 @@ export function ActivityListColumn({
             >
               <div className="flex items-start gap-1.5">
                 {!n.readAt && (
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-white" />
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-surface)]" />
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs">

@@ -36,7 +36,7 @@ export function PinnedPanel({
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-full z-50 mt-1 w-80 overflow-hidden rounded-md border border-[var(--color-line)] bg-white text-[var(--color-ink)] shadow-lg">
+      <div className="absolute right-0 top-full z-50 mt-1 w-80 overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-ink)] shadow-lg">
         <div className="border-b border-[var(--color-line)] px-3 py-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
             Pinned {pins ? `— ${pins.length}` : ""}

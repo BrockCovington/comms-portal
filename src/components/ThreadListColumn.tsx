@@ -48,7 +48,7 @@ export function ThreadListColumn({
               >
                 <div className="flex items-center gap-1.5 text-[10px] text-[var(--color-on-sidebar-dim)]">
                   {t.unread && !active && (
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-white" />
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-surface)]" />
                   )}
                   <span className="truncate font-medium">
                     {t.isDm ? "" : "#"}

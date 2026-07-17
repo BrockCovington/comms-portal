@@ -68,7 +68,7 @@ export function NotificationToasts({ currentUserId }: { currentUserId: string })
         <button
           key={n.id}
           onClick={() => handleClick(n)}
-          className="rounded-md border border-[var(--color-line)] bg-white p-3 text-left shadow-lg hover:bg-[var(--color-accent-soft)]"
+          className="rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-3 text-left shadow-lg hover:bg-[var(--color-accent-soft)]"
         >
           <p className="text-xs text-[var(--color-ink)]">
             <span className="font-semibold">{n.actorName}</span> {describeNotification(n)}

@@ -548,7 +548,7 @@ function ChannelLink({
         <span className={`truncate ${unread ? "font-semibold text-white" : ""}`}>{name}</span>
         {muted && !active && <span className="ml-auto text-xs opacity-70">🔕</span>}
         {unread && (
-          <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-white" />
+          <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-surface)]" />
         )}
       </Link>
     </li>
@@ -668,7 +668,7 @@ function DraggableChannelRow({
         <span className={`truncate ${link.unread ? "font-semibold text-white" : ""}`}>{link.name}</span>
         {link.muted && !link.active && <span className="ml-auto text-xs opacity-70">🔕</span>}
         {link.unread && !link.active && (
-          <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-white group-hover/row:hidden" />
+          <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-surface)] group-hover/row:hidden" />
         )}
       </Link>
       <button
@@ -707,7 +707,7 @@ function MoveMenu({
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
         data-move-menu
-        className="fixed z-50 w-48 rounded-md border border-[var(--color-line)] bg-white p-1 text-[var(--color-ink)] shadow-lg"
+        className="fixed z-50 w-48 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-1 text-[var(--color-ink)] shadow-lg"
         style={{ left: menu.x, top: menu.y }}
       >
         <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">

@@ -112,7 +112,7 @@ export function SearchBox() {
       {showDropdown && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-96 overflow-y-auto rounded-md border border-[var(--color-line)] bg-white text-[var(--color-ink)] shadow-lg">
+          <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-96 overflow-y-auto rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-ink)] shadow-lg">
             {chips.length > 0 && (
               <div className="flex flex-wrap gap-1 border-b border-[var(--color-line)] px-3 py-2">
                 {chips.map((c) => (

@@ -1,26 +1,89 @@
 @import "tailwindcss";
 
 @theme {
-  /* Surfaces — Syndica brand navy, flat (per the 2025 brand style sheet,
-     not a gradient — replaces the earlier Slack-style purple). */
-  --color-sidebar: #040e37;
-  --color-sidebar-active: #3675f8;
-  --color-nav-rail: #040e37;
+  /* ---- Content surfaces + text (overridden by COLOR MODE below) ---- */
   --color-canvas: #ffffff;
+  --color-surface: #ffffff;
   --color-rail: #e8e8eb;
+  --color-ink: #101319;
+  --color-ink-soft: #6a6f7a;
+  --color-line: #e6e7ea;
 
-  /* Brand accent — Syndica Blue */
+  /* ---- Sidebar + accent (overridden by COLOR THEME below; default = Syndica) ---- */
+  --color-sidebar: #040e37;
+  --color-nav-rail: #040e37;
+  --color-sidebar-active: #3675f8;
   --color-accent: #3675f8;
-  --color-accent-soft: #e8f0fe;
-
-  /* Text */
-  --color-ink: #040e37;
-  --color-ink-soft: #84848a;
   --color-on-sidebar: #ffffff;
   --color-on-sidebar-dim: #7c86ad;
+  /* Derived from accent so it follows the chosen theme automatically, and
+     stays legible on either a light or dark canvas (translucent, not solid). */
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
 
-  /* Lines */
-  --color-line: #e8e8eb;
+/* ---------------------------------------------------------------------------
+   Color mode — dark. Only the content area flips (canvas/surface/text/lines);
+   the sidebar stays its themed dark color, matching Slack. "system" follows the
+   OS via the media query; explicit "dark" always applies.
+   --------------------------------------------------------------------------- */
+:root[data-color-mode="dark"] {
+  --color-canvas: #16181c;
+  --color-surface: #1f2226;
+  --color-rail: #26292e;
+  --color-ink: #e7e8ea;
+  --color-ink-soft: #9aa0aa;
+  --color-line: #2c2f34;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-color-mode="system"] {
+    --color-canvas: #16181c;
+    --color-surface: #1f2226;
+    --color-rail: #26292e;
+    --color-ink: #e7e8ea;
+    --color-ink-soft: #9aa0aa;
+    --color-line: #2c2f34;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Color themes — recolor the sidebar + accent (accent-soft follows the accent
+   automatically). Applied in both light and dark mode. "syndica" is the base.
+   --------------------------------------------------------------------------- */
+:root[data-theme="syndica"] {
+  --color-sidebar: #040e37;
+  --color-nav-rail: #040e37;
+  --color-sidebar-active: #3675f8;
+  --color-accent: #3675f8;
+  --color-on-sidebar-dim: #7c86ad;
+}
+:root[data-theme="aubergine"] {
+  --color-sidebar: #3f0e40;
+  --color-nav-rail: #3f0e40;
+  --color-sidebar-active: #b552cc;
+  --color-accent: #b552cc;
+  --color-on-sidebar-dim: #b58cba;
+}
+:root[data-theme="forest"] {
+  --color-sidebar: #0e2f26;
+  --color-nav-rail: #0e2f26;
+  --color-sidebar-active: #16a06b;
+  --color-accent: #16a06b;
+  --color-on-sidebar-dim: #6f9d90;
+}
+:root[data-theme="ember"] {
+  --color-sidebar: #2b1512;
+  --color-nav-rail: #2b1512;
+  --color-sidebar-active: #e8632a;
+  --color-accent: #e8632a;
+  --color-on-sidebar-dim: #a98a80;
+}
+:root[data-theme="rose"] {
+  --color-sidebar: #3a0f22;
+  --color-nav-rail: #3a0f22;
+  --color-sidebar-active: #e23e6b;
+  --color-accent: #e23e6b;
+  --color-on-sidebar-dim: #b98a97;
 }
 
 html,

@@ -350,7 +350,7 @@ function NoteInput({
   }
 
   return (
-    <div className="border-t border-[var(--color-line)] bg-white px-3 py-2">
+    <div className="border-t border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2">
       {attachment && (
         <div className="mb-1.5 flex items-center gap-1.5 text-xs text-[var(--color-ink-soft)]">
           {attachment.status === "uploading" && <span>Uploading {attachment.fileName}…</span>}
@@ -457,7 +457,7 @@ export function HuddleControls({
             disabled={tileSize <= TILE_SIZE_MIN}
             aria-label="Shrink video"
             title="Shrink video"
-            className="flex h-6 w-6 items-center justify-center rounded text-[var(--color-ink-soft)] hover:bg-white hover:text-[var(--color-accent)] disabled:opacity-30"
+            className="flex h-6 w-6 items-center justify-center rounded text-[var(--color-ink-soft)] hover:bg-[var(--color-surface)] hover:text-[var(--color-accent)] disabled:opacity-30"
           >
             −
           </button>
@@ -466,7 +466,7 @@ export function HuddleControls({
             disabled={tileSize >= TILE_SIZE_MAX}
             aria-label="Enlarge video"
             title="Enlarge video"
-            className="flex h-6 w-6 items-center justify-center rounded text-[var(--color-ink-soft)] hover:bg-white hover:text-[var(--color-accent)] disabled:opacity-30"
+            className="flex h-6 w-6 items-center justify-center rounded text-[var(--color-ink-soft)] hover:bg-[var(--color-surface)] hover:text-[var(--color-accent)] disabled:opacity-30"
           >
             +
           </button>
@@ -534,7 +534,7 @@ export function HuddleControls({
                 {/* Opens upward into the video area: the huddle container is
                     overflow-hidden, so a downward panel gets clipped at its
                     bottom edge (and by the composer below). */}
-                <div className="absolute bottom-full right-0 z-50 mb-1 max-h-[70vh] w-56 overflow-y-auto rounded-md border border-[var(--color-line)] bg-white p-2 text-left shadow-lg">
+                <div className="absolute bottom-full right-0 z-50 mb-1 max-h-[70vh] w-56 overflow-y-auto rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-2 text-left shadow-lg">
                   <p className="px-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
                     Microphone
                   </p>

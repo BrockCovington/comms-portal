@@ -71,7 +71,7 @@ export function ForwardDialog({
       onClick={(e) => e.stopPropagation()}
     >
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-xl">
+      <div className="relative w-full max-w-md rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-[var(--color-ink)]">Forward message</h2>
           <button onClick={onClose} aria-label="Close" className="text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">
