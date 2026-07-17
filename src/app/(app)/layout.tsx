@@ -9,7 +9,9 @@ import { NotificationToasts } from "@/components/NotificationToasts";
 import { IncomingHuddle } from "@/components/IncomingHuddle";
 import { HuddleProvider } from "@/components/HuddleProvider";
 import { CustomEmojiProvider } from "@/components/CustomEmojiContext";
+import { QuickReactionsProvider } from "@/components/QuickReactionsProvider";
 import { getChannelsWithUnread } from "@/lib/channels";
+import { getHuddleReactions } from "@/lib/huddleReactions";
 import { getChannelSections } from "@/lib/channelSections";
 import { getDmThreadsForUser } from "@/lib/dms";
 import { getThreadsForUser } from "@/lib/threads";
@@ -27,7 +29,7 @@ export default async function AppLayout({
   if (!session?.user?.id) redirect("/signin");
 
   const userId = session.user.id;
-  const [channelsWithUnread, channelSections, dmThreads, threads, savedMessages, drafts, files, customEmoji] =
+  const [channelsWithUnread, channelSections, dmThreads, threads, savedMessages, drafts, files, huddleReactions, customEmoji] =
     await Promise.all([
       getChannelsWithUnread(userId),
       getChannelSections(userId),
@@ -36,6 +38,7 @@ export default async function AppLayout({
       getSavedMessagesForUser(userId),
       getDraftsForUser(userId),
       getFilesForUser(userId),
+      getHuddleReactions(userId),
       prisma.customEmoji
         .findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } })
         // Client uses the access-checked proxy path, never the private Blob URL.
@@ -54,6 +57,7 @@ export default async function AppLayout({
 
   return (
     <CustomEmojiProvider initialEmoji={customEmoji}>
+      <QuickReactionsProvider initial={huddleReactions}>
       <HuddleProvider currentUserId={userId}>
         <AppShell
           topBar={<TopBar user={user} />}
@@ -83,6 +87,7 @@ export default async function AppLayout({
         <NotificationToasts currentUserId={userId} />
         <IncomingHuddle currentUserId={userId} />
       </HuddleProvider>
+      </QuickReactionsProvider>
     </CustomEmojiProvider>
   );
 }

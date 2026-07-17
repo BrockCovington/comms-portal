@@ -27,6 +27,10 @@ model User {
   role          Role      @default(EMPLOYEE)
   createdAt     DateTime  @default(now())
 
+  // The user's chosen quick-reaction emoji for huddles (unicode graphemes or
+  // ":name:" custom-emoji tokens). Empty = fall back to the default set.
+  huddleReactions String[] @default([])
+
   // Custom (uploaded) profile picture. When set, `image` holds the
   // access-checked proxy path (GET /api/users/:id/avatar); the fields below
   // are server-only Blob bookkeeping the proxy uses to stream the bytes and

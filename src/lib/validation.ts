@@ -74,6 +74,21 @@ export const toggleReactionSchema = z.object({
     }),
 });
 
+// A single reaction token — same rule as toggleReactionSchema.emoji, reused
+// for the huddle quick-reaction set below.
+export const reactionTokenSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .refine((v) => CUSTOM_SHORTCODE.test(v) || (v.length <= 16 && !NON_EMOJI_CHARS.test(v)), {
+    message: "Invalid emoji",
+  });
+
+// The customizable huddle quick-reaction set (the "main 8").
+export const huddleReactionsSchema = z.object({
+  reactions: z.array(reactionTokenSchema).min(1).max(8),
+});
+
 export const updateRoleSchema = z.object({
   role: z.enum(["EMPLOYEE", "ADMIN"]),
 });

@@ -22,6 +22,7 @@ import type { KrispNoiseFilterProcessor } from "@livekit/krisp-noise-filter";
 import type { HuddleParticipant, HuddleFloatingReaction } from "@/hooks/useHuddleRoster";
 import { decodeParticipantImage } from "@/lib/huddle";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { EmojiToken } from "@/components/EmojiToken";
 
 function initials(name: string | null): string {
   return (name ?? "?").charAt(0).toUpperCase();
@@ -266,7 +267,7 @@ function FloatingReactionItem({ emoji }: { emoji: string }) {
         risen ? "-translate-y-10 opacity-0" : "translate-y-0 opacity-100"
       }`}
     >
-      {emoji}
+      <EmojiToken token={emoji} imgClassName="inline-block h-8 w-8 object-contain" />
     </span>
   );
 }
