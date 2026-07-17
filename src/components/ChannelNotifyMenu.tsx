@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { BellIcon, BellOffIcon } from "@/components/RailIcons";
 
 type Level = "ALL" | "MENTIONS" | "NONE";
 
@@ -52,9 +53,11 @@ export function ChannelNotifyMenu({
         onClick={() => setOpen((v) => !v)}
         aria-label="Notification preferences"
         title={muted ? "Notifications muted" : "Notification preferences"}
-        className="rounded-md px-2 py-1 text-xs font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
+        className={`flex h-8 w-8 items-center justify-center rounded-md hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)] ${
+          muted ? "text-[var(--color-accent)]" : "text-[var(--color-ink-soft)]"
+        }`}
       >
-        {muted ? "🔕" : "🔔"}
+        {muted ? <BellOffIcon className="h-5 w-5" /> : <BellIcon className="h-5 w-5" />}
       </button>
       {open && (
         <>

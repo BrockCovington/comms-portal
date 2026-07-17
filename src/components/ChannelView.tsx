@@ -13,8 +13,21 @@ import { PinnedPanel } from "@/components/PinnedPanel";
 import { Avatar } from "@/components/Avatar";
 import { ChannelNotifyMenu } from "@/components/ChannelNotifyMenu";
 import { ScheduledPanel } from "@/components/ScheduledPanel";
-import { HuddleLauncher } from "@/components/HuddleLauncher";
+import { ChannelFilesView } from "@/components/ChannelFilesView";
+import { useHuddleControls } from "@/components/HuddleProvider";
+import { useHuddleRoster } from "@/hooks/useHuddleRoster";
 import { useMobileNav } from "@/components/MobileNavContext";
+import {
+  MenuIcon,
+  StarIcon,
+  StarFilledIcon,
+  HeadphonesIcon,
+  SearchIcon,
+  KebabIcon,
+  PinIcon,
+  UsersIcon,
+  ArchiveIcon,
+} from "@/components/RailIcons";
 
 export function ChannelView({
   channelId,
@@ -80,6 +93,20 @@ export function ChannelView({
     unarchiveChannel,
   } = useChannelMembers(channelId);
   const { online, typingUsers, sendTyping } = usePresence(channelId, currentUserId);
+  const { startOrJoin } = useHuddleControls();
+  const { participants: huddleParticipants } = useHuddleRoster(channelId);
+  const [activeTab, setActiveTab] = useState<"messages" | "files">("messages");
+  const [moreOpen, setMoreOpen] = useState(false);
+  // For a DM, the other participant — drives the header avatar.
+  const otherDmMember = isDm ? members.find((m) => m.userId !== currentUserId)?.user : null;
+  const huddleLabel = isDm ? channelName : `#${channelName}`;
+
+  function openSearch() {
+    // Focus the top-bar search, prefilled to scope to this channel (channels
+    // only — a DM's stored name isn't a usable in: filter).
+    const prefill = isDm ? "" : `in:${channelName} `;
+    window.dispatchEvent(new CustomEvent("app:focus-search", { detail: { prefill } }));
+  }
   const { setOpen: setMobileNavOpen } = useMobileNav();
   const router = useRouter();
   const isMember = members.some((m) => m.userId === currentUserId);
@@ -198,50 +225,72 @@ export function ChannelView({
           activeThreadId ? "hidden md:flex" : "flex"
         }`}
       >
-        <header className="flex h-14 shrink-0 items-center border-b border-[var(--color-line)] px-5">
+        <header className="flex h-14 shrink-0 items-center gap-1 border-b border-[var(--color-line)] px-4">
           <button
             onClick={() => setMobileNavOpen(true)}
             aria-label="Open menu"
-            className="mr-3 -ml-1 rounded p-1.5 text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] md:hidden"
+            className="mr-1 rounded p-1.5 text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] md:hidden"
           >
-            ☰
+            <MenuIcon className="h-5 w-5" />
           </button>
-          <h1 className="text-base font-semibold text-[var(--color-pink,var(--color-ink))]">
-            {!isDm && <span className="text-[var(--color-ink-soft)]">#</span>} {channelName}
-          </h1>
+
           <button
             onClick={handleToggleStar}
             disabled={starBusy}
-            aria-label={isStarred ? "Unstar channel" : "Star channel"}
-            title={isStarred ? "Unstar channel" : "Star channel"}
-            className="ml-2 rounded p-1 text-[var(--color-ink-soft)] hover:text-[var(--color-accent)] disabled:opacity-50"
+            aria-label={isStarred ? "Unstar" : "Star"}
+            title={isStarred ? "Unstar" : "Star"}
+            className="rounded p-1 text-[var(--color-ink-soft)] hover:text-[var(--color-accent)] disabled:opacity-50"
           >
-            {isStarred ? "★" : "☆"}
+            {isStarred ? (
+              <StarFilledIcon className="h-5 w-5 text-[var(--color-accent)]" />
+            ) : (
+              <StarIcon className="h-5 w-5" />
+            )}
           </button>
 
-          <div className="ml-auto flex items-center gap-3">
+          {isDm ? (
+            <span className="ml-1 flex min-w-0 items-center gap-2">
+              <Avatar
+                name={otherDmMember?.name ?? channelName}
+                image={otherDmMember?.image ?? null}
+                size={28}
+                variant="solid"
+              />
+              <h1 className="truncate text-base font-semibold text-[var(--color-pink,var(--color-ink))]">
+                {channelName}
+              </h1>
+            </span>
+          ) : (
+            <h1 className="ml-1 truncate text-base font-semibold text-[var(--color-pink,var(--color-ink))]">
+              <span className="text-[var(--color-ink-soft)]">#</span> {channelName}
+            </h1>
+          )}
+
+          <div className="ml-auto flex items-center gap-1">
             {online.length > 0 && (
-              <div className="flex items-center -space-x-2">
-                {online.slice(0, 5).map((u) => (
+              <div className="mr-1 flex items-center -space-x-2">
+                {online.slice(0, 3).map((u) => (
                   <span key={u.id} title={`${u.name ?? "Someone"} · online`} className="relative inline-block">
-                    <Avatar name={u.name} image={u.image} size={24} className="border-2 border-white" />
-                    <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-white bg-green-500" />
+                    <Avatar name={u.name} image={u.image} size={24} className="border-2 border-[var(--color-canvas)]" />
+                    <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-[var(--color-canvas)] bg-green-500" />
                   </span>
                 ))}
               </div>
             )}
 
-            {!isDm && isAdmin && (
+            {!isArchived && (
               <button
-                onClick={handleToggleArchive}
-                disabled={archiveBusy}
-                className="rounded-md px-2 py-1 text-xs font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)] disabled:opacity-50"
+                onClick={() => startOrJoin(channelId, huddleLabel)}
+                aria-label="Start or join huddle"
+                title="Huddle"
+                className="relative flex h-8 w-8 items-center justify-center rounded-md text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
               >
-                {archiveBusy
-                  ? "Working…"
-                  : isArchived
-                    ? "Unarchive channel"
-                    : "Archive channel"}
+                <HeadphonesIcon className="h-5 w-5" />
+                {huddleParticipants.length > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-green-500 px-1 text-[10px] font-semibold text-white">
+                    {huddleParticipants.length}
+                  </span>
+                )}
               </button>
             )}
 
@@ -251,137 +300,179 @@ export function ChannelView({
               initialLevel={notifyLevel ?? "MENTIONS"}
             />
 
+            <button
+              onClick={openSearch}
+              aria-label="Search this conversation"
+              title="Search"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
+            >
+              <SearchIcon className="h-5 w-5" />
+            </button>
+
             <div className="relative">
               <button
-                onClick={() => setPinnedOpen((v) => !v)}
-                aria-label="Pinned messages"
-                title="Pinned messages"
-                className="rounded-md px-2 py-1 text-xs font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
+                onClick={() => setMoreOpen((v) => !v)}
+                aria-label="More"
+                title="More"
+                className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
               >
-                📌 Pinned
+                <KebabIcon className="h-5 w-5" />
               </button>
+              {moreOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />
+                  <div className="absolute right-0 top-full z-50 mt-1 w-52 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-1 text-left shadow-lg">
+                    <button
+                      onClick={() => { setMoreOpen(false); setPinnedOpen(true); }}
+                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
+                    >
+                      <PinIcon className="h-4 w-4" /> Pinned messages
+                    </button>
+                    {!isDm && (
+                      <button
+                        onClick={() => { setMoreOpen(false); setAddMembersOpen(true); }}
+                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
+                      >
+                        <UsersIcon className="h-4 w-4" /> Members ({members.length})
+                      </button>
+                    )}
+                    {!isDm && isAdmin && (
+                      <button
+                        onClick={() => { setMoreOpen(false); handleToggleArchive(); }}
+                        disabled={archiveBusy}
+                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)] disabled:opacity-50"
+                      >
+                        <ArchiveIcon className="h-4 w-4" /> {isArchived ? "Unarchive channel" : "Archive channel"}
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
               {pinnedOpen && (
-                <PinnedPanel
-                  channelId={channelId}
-                  onClose={() => setPinnedOpen(false)}
-                  onNavigate={goToMessage}
+                <PinnedPanel channelId={channelId} onClose={() => setPinnedOpen(false)} onNavigate={goToMessage} />
+              )}
+              {addMembersOpen && !isDm && (
+                <AddMembersPanel
+                  members={members}
+                  onAdd={addMember}
+                  onClose={() => setAddMembersOpen(false)}
+                  isMember={isMember}
+                  canJoin={!isPrivate && !isArchived}
+                  onJoin={handleJoin}
+                  onLeave={handleLeave}
+                  isAdmin={isAdmin}
+                  currentUserId={currentUserId}
+                  onRemove={removeMember}
                 />
               )}
             </div>
-
-            {!isDm && (
-              <div className="relative">
-                <button
-                  onClick={() => setAddMembersOpen((v) => !v)}
-                  className="rounded-md px-2 py-1 text-xs font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
-                >
-                  Members ({members.length})
-                </button>
-                {addMembersOpen && (
-                  <AddMembersPanel
-                    members={members}
-                    onAdd={addMember}
-                    onClose={() => setAddMembersOpen(false)}
-                    isMember={isMember}
-                    canJoin={!isPrivate && !isArchived}
-                    onJoin={handleJoin}
-                    onLeave={handleLeave}
-                    isAdmin={isAdmin}
-                    currentUserId={currentUserId}
-                    onRemove={removeMember}
-                  />
-                )}
-              </div>
-            )}
           </div>
         </header>
 
-        <HuddleLauncher
-          channelId={channelId}
-          channelName={channelName}
-          isDm={isDm}
-          isArchived={isArchived}
-        />
-
-        <MessageList
-          channelId={channelId}
-          messages={messages}
-          loading={loading}
-          loadingMore={loadingMore}
-          hasMore={hasMore}
-          onLoadOlder={loadOlder}
-          currentUserId={currentUserId}
-          activeThreadId={activeThreadId}
-          onOpenThread={openThread}
-          onEdit={editMessage}
-          onDelete={deleteMessage}
-          memberNames={memberNames}
-          onToggleReaction={toggleReaction}
-          onToggleSave={toggleSave}
-          onTogglePin={togglePin}
-          highlightMessageId={rootHighlightId}
-          seenAt={seenAt}
-        />
-
-        {error && (
-          <p className="px-5 pb-1 text-xs text-red-600">{error}</p>
-        )}
-
-        {/* Fixed height so the composer doesn't jump up and down as people
-            start/stop typing. */}
-        <div className="h-5 shrink-0 px-5 text-xs text-[var(--color-ink-soft)]">
-          {typingUsers.length === 1 && <span>{typingUsers[0].name ?? "Someone"} is typing…</span>}
-          {typingUsers.length === 2 && (
-            <span>
-              {typingUsers[0].name ?? "Someone"} and {typingUsers[1].name ?? "someone"} are typing…
-            </span>
-          )}
-          {typingUsers.length > 2 && <span>Several people are typing…</span>}
+        {/* Tabs — Messages / Files & links */}
+        <div className="flex shrink-0 items-center gap-4 border-b border-[var(--color-line)] px-5">
+          <TabButton active={activeTab === "messages"} onClick={() => setActiveTab("messages")}>
+            Messages
+          </TabButton>
+          <TabButton
+            active={activeTab === "files"}
+            onClick={() => { setActiveTab("files"); setActiveThreadId(null); }}
+          >
+            Files &amp; links
+          </TabButton>
         </div>
 
-        {archiveError && (
-          <p className="px-5 pb-1 text-xs text-red-600">{archiveError}</p>
-        )}
-
-        {isArchived ? (
-          <div className="shrink-0 border-t border-[var(--color-line)] p-4 text-center text-xs text-[var(--color-ink-soft)]">
-            This channel is archived — read only.
-          </div>
+        {activeTab === "files" ? (
+          <ChannelFilesView
+            channelId={channelId}
+            onOpenMessage={(id) => {
+              setActiveTab("messages");
+              goToMessage(id, null);
+            }}
+          />
         ) : (
           <>
-            {scheduledCount > 0 && (
-              <div className="relative px-5">
-                <button
-                  onClick={() => setScheduledPanelOpen((v) => !v)}
-                  className="text-xs font-medium text-[var(--color-accent)] hover:underline"
-                >
-                  🕐 {scheduledCount} scheduled message{scheduledCount === 1 ? "" : "s"}
-                </button>
-                {scheduledPanelOpen && (
-                  <ScheduledPanel
-                    channelId={channelId}
-                    onClose={() => setScheduledPanelOpen(false)}
-                    onChange={refreshScheduled}
-                  />
-                )}
-              </div>
-            )}
-            <MessageComposer
+            <MessageList
               channelId={channelId}
-              channelName={channelName}
-              onSend={sendMessage}
-              placeholder={isDm ? `Message ${channelName}` : undefined}
-              members={composerMembers}
-              onTyping={sendTyping}
-              draftsEnabled
-              schedulingEnabled
-              onScheduled={refreshScheduled}
+              messages={messages}
+              loading={loading}
+              loadingMore={loadingMore}
+              hasMore={hasMore}
+              onLoadOlder={loadOlder}
+              currentUserId={currentUserId}
+              activeThreadId={activeThreadId}
+              onOpenThread={openThread}
+              onEdit={editMessage}
+              onDelete={deleteMessage}
+              memberNames={memberNames}
+              onToggleReaction={toggleReaction}
+              onToggleSave={toggleSave}
+              onTogglePin={togglePin}
+              highlightMessageId={rootHighlightId}
+              seenAt={seenAt}
             />
+
+            {error && (
+              <p className="px-5 pb-1 text-xs text-red-600">{error}</p>
+            )}
+
+            {/* Fixed height so the composer doesn't jump up and down as people
+                start/stop typing. */}
+            <div className="h-5 shrink-0 px-5 text-xs text-[var(--color-ink-soft)]">
+              {typingUsers.length === 1 && <span>{typingUsers[0].name ?? "Someone"} is typing…</span>}
+              {typingUsers.length === 2 && (
+                <span>
+                  {typingUsers[0].name ?? "Someone"} and {typingUsers[1].name ?? "someone"} are typing…
+                </span>
+              )}
+              {typingUsers.length > 2 && <span>Several people are typing…</span>}
+            </div>
+
+            {archiveError && (
+              <p className="px-5 pb-1 text-xs text-red-600">{archiveError}</p>
+            )}
+
+            {isArchived ? (
+              <div className="shrink-0 border-t border-[var(--color-line)] p-4 text-center text-xs text-[var(--color-ink-soft)]">
+                This channel is archived — read only.
+              </div>
+            ) : (
+              <>
+                {scheduledCount > 0 && (
+                  <div className="relative px-5">
+                    <button
+                      onClick={() => setScheduledPanelOpen((v) => !v)}
+                      className="text-xs font-medium text-[var(--color-accent)] hover:underline"
+                    >
+                      🕐 {scheduledCount} scheduled message{scheduledCount === 1 ? "" : "s"}
+                    </button>
+                    {scheduledPanelOpen && (
+                      <ScheduledPanel
+                        channelId={channelId}
+                        onClose={() => setScheduledPanelOpen(false)}
+                        onChange={refreshScheduled}
+                      />
+                    )}
+                  </div>
+                )}
+                <MessageComposer
+                  channelId={channelId}
+                  channelName={channelName}
+                  onSend={sendMessage}
+                  placeholder={isDm ? `Message ${channelName}` : undefined}
+                  members={composerMembers}
+                  onTyping={sendTyping}
+                  draftsEnabled
+                  schedulingEnabled
+                  onScheduled={refreshScheduled}
+                />
+              </>
+            )}
           </>
         )}
       </div>
 
-      {activeThreadId && (
+      {activeThreadId && activeTab === "messages" && (
         <ThreadPanel
           channelId={channelId}
           parentId={activeThreadId}
@@ -393,5 +484,28 @@ export function ChannelView({
         />
       )}
     </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`-mb-px flex items-center gap-1.5 border-b-2 py-2.5 text-sm transition ${
+        active
+          ? "border-[var(--color-accent)] font-semibold text-[var(--color-ink)]"
+          : "border-transparent text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

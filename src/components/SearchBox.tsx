@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type SearchResult = {
@@ -62,6 +62,20 @@ export function SearchBox() {
   const [queryEcho, setQueryEcho] = useState<QueryEcho | null>(null);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // The channel header's search icon focuses/prefills this box (e.g. with an
+  // `in:<channel>` scope) via a window event, so search stays in one place.
+  useEffect(() => {
+    function onFocusSearch(e: Event) {
+      const detail = (e as CustomEvent<{ prefill?: string }>).detail;
+      if (detail?.prefill) setQuery(detail.prefill);
+      setOpen(true);
+      inputRef.current?.focus();
+    }
+    window.addEventListener("app:focus-search", onFocusSearch);
+    return () => window.removeEventListener("app:focus-search", onFocusSearch);
+  }, []);
 
   useEffect(() => {
     const q = query.trim();
@@ -102,6 +116,7 @@ export function SearchBox() {
   return (
     <div className="relative">
       <input
+        ref={inputRef}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setOpen(true)}

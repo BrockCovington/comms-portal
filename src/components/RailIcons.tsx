@@ -90,6 +90,108 @@ export function PlusIcon(props: IconProps) {
   );
 }
 
+export function StarIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L4.5 9.7l5.9-.8z" />
+    </Line>
+  );
+}
+
+export function StarFilledIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className ?? "h-6 w-6"} aria-hidden="true">
+      <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L4.5 9.7l5.9-.8z" />
+    </svg>
+  );
+}
+
+export function HeadphonesIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M5 13v-1a7 7 0 0 1 14 0v1" />
+      <rect x="3.5" y="13" width="3.5" height="6" rx="1.25" />
+      <rect x="17" y="13" width="3.5" height="6" rx="1.25" />
+    </Line>
+  );
+}
+
+export function BellIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M6 10a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6z" />
+      <path d="M10 20a2.2 2.2 0 0 0 4 0" />
+    </Line>
+  );
+}
+
+export function BellOffIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M6 10a6 6 0 0 1 9.5-4.85M18 12c0 4 1.5 5.5 2 6H8" />
+      <path d="M10 20a2.2 2.2 0 0 0 4 0" />
+      <path d="M3.5 3.5l17 17" />
+    </Line>
+  );
+}
+
+export function SearchIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M20 20l-4.2-4.2" />
+    </Line>
+  );
+}
+
+// Vertical three-dot "more" (kebab), distinct from the horizontal MoreIcon.
+export function KebabIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className ?? "h-6 w-6"} aria-hidden="true">
+      <circle cx="12" cy="5" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="12" cy="19" r="1.6" />
+    </svg>
+  );
+}
+
+export function PinIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M9 4h6l-1 6 3 3H7l3-3-1-6z" />
+      <path d="M12 16v4" />
+    </Line>
+  );
+}
+
+export function UsersIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+      <path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M17.5 19a5.5 5.5 0 0 0-2.5-4.6" />
+    </Line>
+  );
+}
+
+export function MenuIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </Line>
+  );
+}
+
+export function ArchiveIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <rect x="3.5" y="5" width="17" height="4" rx="1" />
+      <path d="M5 9v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9" />
+      <path d="M10 13h4" />
+    </Line>
+  );
+}
+
 // Filled dots — reads cleaner than stroked circles at this size.
 export function MoreIcon({ className }: IconProps) {
   return (
