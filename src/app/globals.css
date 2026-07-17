@@ -85,6 +85,22 @@
   --color-accent: #e23e6b;
   --color-on-sidebar-dim: #b98a97;
 }
+/* Brand-book aligned: Syndica brand dark (#01102b) + logo blue gradient
+   (#0089ff → #007cff), pulled straight from the Syndica mark. */
+:root[data-theme="midnight"] {
+  --color-sidebar: #01102b;
+  --color-nav-rail: #01102b;
+  --color-sidebar-active: #0089ff;
+  --color-accent: #0089ff;
+  --color-on-sidebar-dim: #6a7fa8;
+}
+:root[data-theme="azure"] {
+  --color-sidebar: #0a2a5c;
+  --color-nav-rail: #0a2a5c;
+  --color-sidebar-active: #38a0ff;
+  --color-accent: #007cff;
+  --color-on-sidebar-dim: #8fa8cf;
+}
 
 html,
 body {

@@ -8,6 +8,16 @@ import { NotificationPrefsPanel } from "@/components/NotificationPrefsPanel";
 import { ProfilePanel } from "@/components/ProfilePanel";
 import { AppearancePanel } from "@/components/AppearancePanel";
 import { Avatar } from "@/components/Avatar";
+import {
+  HomeIcon,
+  DmsIcon,
+  ActivityIcon,
+  LaterIcon,
+  FilesIcon,
+  ToolsIcon,
+  PlusIcon,
+  MoreIcon,
+} from "@/components/RailIcons";
 
 function railItemClass(active: boolean) {
   return `flex w-16 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 transition ${
@@ -26,13 +36,13 @@ function RailLink({
 }: {
   href: string;
   active: boolean;
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   badge?: number;
 }) {
   return (
     <Link href={href} className={railItemClass(active)} aria-label={label} title={label}>
-      <span className="relative text-lg leading-none">
+      <span className="relative">
         {icon}
         {!!badge && (
           <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
@@ -105,20 +115,20 @@ export function IconRail({
         <img src="/syndica-icon.svg" alt="" className="h-7 w-7" />
       </Link>
 
-      <RailLink href="/c" active={pathname === "/c"} icon="🏠" label="Home" />
+      <RailLink href="/c" active={pathname === "/c"} icon={<HomeIcon />} label="Home" />
       {/* Starting a new DM lives at /dms/new (NewDmView) — this points at
           the full list of ongoing DM conversations instead. */}
-      <RailLink href="/dms" active={pathname === "/dms"} icon="💬" label="DMs" />
+      <RailLink href="/dms" active={pathname === "/dms"} icon={<DmsIcon />} label="DMs" />
       <RailLink
         href="/activity"
         active={pathname === "/activity"}
-        icon="🔔"
+        icon={<ActivityIcon />}
         label="Activity"
         badge={unreadCount}
       />
-      <RailLink href="/later" active={pathname === "/later"} icon="🔖" label="Later" />
-      <RailLink href="/files" active={pathname === "/files"} icon="📁" label="Files" />
-      <RailLink href="/admin" active={pathname === "/admin"} icon="🛠️" label="Tools" />
+      <RailLink href="/later" active={pathname === "/later"} icon={<LaterIcon />} label="Later" />
+      <RailLink href="/files" active={pathname === "/files"} icon={<FilesIcon />} label="Files" />
+      <RailLink href="/admin" active={pathname === "/admin"} icon={<ToolsIcon />} label="Tools" />
 
       <button
         onClick={createChannel}
@@ -127,7 +137,7 @@ export function IconRail({
         aria-label="Create channel"
         title="Create channel"
       >
-        <span className="text-lg leading-none">+</span>
+        <PlusIcon />
         <span className="text-[10px] leading-none">New</span>
       </button>
 
@@ -170,7 +180,7 @@ export function IconRail({
           aria-label="More"
           title="More"
         >
-          <span className="text-lg leading-none">•••</span>
+          <MoreIcon />
           <span className="text-[10px] leading-none">More</span>
         </button>
       </div>
