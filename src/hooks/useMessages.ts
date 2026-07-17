@@ -17,7 +17,14 @@ export type ChatMessage = {
   createdAt: string;
   editedAt: string | null;
   deletedAt?: string | null;
-  user: { id: string; name: string | null; image: string | null };
+  user: {
+    id: string;
+    name: string | null;
+    image: string | null;
+    statusEmoji?: string | null;
+    statusText?: string | null;
+    statusExpiresAt?: string | null;
+  };
   parentId?: string | null;
   replyCount?: number;
   lastReplyAt?: string | null;

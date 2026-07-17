@@ -17,7 +17,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
   const members = await prisma.channelMember.findMany({
     where: { channelId },
-    select: { userId: true, user: { select: { id: true, name: true, email: true, image: true } } },
+    select: { userId: true, user: { select: { id: true, name: true, email: true, image: true, statusEmoji: true, statusText: true, statusExpiresAt: true } } },
   });
 
   return NextResponse.json({ members });
@@ -64,7 +64,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const targetUser = await prisma.user.findUnique({
     where: { id: parsed.data.userId },
-    select: { id: true, name: true, email: true, image: true },
+    select: { id: true, name: true, email: true, image: true, statusEmoji: true, statusText: true, statusExpiresAt: true },
   });
   if (!targetUser) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });

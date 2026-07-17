@@ -1,8 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
+import { EmojiToken } from "@/components/EmojiToken";
+import { StatusModal, type UserStatus } from "@/components/StatusModal";
 
 // Profile popover opened from the icon rail's avatar. Upload / replace /
 // remove your own profile picture. Anchored to the right of the rail, same
@@ -26,6 +28,15 @@ export function ProfilePanel({
   const [preview, setPreview] = useState<string | null>(image);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<UserStatus>({ emoji: null, text: null, expiresAt: null });
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/status", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setStatus(d); })
+      .catch(() => {});
+  }, []);
 
   async function upload(file: File) {
     setBusy(true);
@@ -73,9 +84,31 @@ export function ProfilePanel({
       <div className="fixed bottom-4 left-[5.5rem] z-50 w-64 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-4 text-[var(--color-ink)] shadow-lg">
         <div className="flex flex-col items-center text-center">
           <Avatar name={name} image={preview} size={72} variant="solid" />
-          <p className="mt-2 text-sm font-semibold">{name}</p>
+          <p className="mt-2 text-sm font-semibold">
+            {name}
+            {status.emoji && (
+              <span className="ml-1.5" title={status.text ?? undefined}>
+                <EmojiToken token={status.emoji} imgClassName="inline-block h-4 w-4 object-contain align-text-bottom" />
+              </span>
+            )}
+          </p>
           <p className="truncate text-xs text-[var(--color-ink-soft)]">{email}</p>
         </div>
+
+        {/* Status — Slack-style "Update your status" affordance. */}
+        <button
+          onClick={() => setStatusModalOpen(true)}
+          className="mt-3 flex w-full items-center gap-2 rounded-md border border-[var(--color-line)] px-2.5 py-2 text-left text-sm hover:bg-[var(--color-accent-soft)]"
+        >
+          {status.emoji ? (
+            <EmojiToken token={status.emoji} imgClassName="inline-block h-4 w-4 object-contain" />
+          ) : (
+            <span className="text-[var(--color-ink-soft)]">☺</span>
+          )}
+          <span className={`min-w-0 flex-1 truncate ${status.text ? "" : "text-[var(--color-ink-soft)]"}`}>
+            {status.text ?? "Update your status"}
+          </span>
+        </button>
 
         <input
           ref={fileInputRef}
@@ -113,6 +146,17 @@ export function ProfilePanel({
           PNG, JPEG, WebP, or GIF · max 2MB
         </p>
       </div>
+
+      {statusModalOpen && (
+        <StatusModal
+          initial={status}
+          onClose={() => setStatusModalOpen(false)}
+          onSaved={(s) => {
+            setStatus(s);
+            router.refresh();
+          }}
+        />
+      )}
     </>
   );
 }

@@ -3,8 +3,15 @@
 import { useEffect, useState } from "react";
 import type { ChannelMember } from "@/hooks/useChannelMembers";
 import { Avatar } from "@/components/Avatar";
+import { StatusBadge } from "@/components/StatusBadge";
+import type { UserStatusFields } from "@/lib/status";
 
-type OrgUser = { id: string; name: string | null; email: string; image: string | null };
+type OrgUser = {
+  id: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+} & UserStatusFields;
 
 export function AddMembersPanel({
   members,
@@ -105,6 +112,7 @@ export function AddMembersPanel({
                 <Avatar name={m.user.name ?? m.user.email} image={m.user.image} size={20} />
 
                 <span className="min-w-0 flex-1 truncate">{m.user.name ?? m.user.email}</span>
+                <StatusBadge emoji={m.user.statusEmoji} text={m.user.statusText} expiresAt={m.user.statusExpiresAt} />
                 {isAdmin && onRemove && m.userId !== currentUserId && (
                   <button
                     onClick={() => handleRemove(m.userId)}
@@ -144,6 +152,7 @@ export function AddMembersPanel({
                 <Avatar name={u.name ?? u.email} image={u.image} size={24} />
 
                 <span className="min-w-0 flex-1 truncate">{u.name ?? u.email}</span>
+                <StatusBadge emoji={u.statusEmoji} text={u.statusText} expiresAt={u.statusExpiresAt} />
                 {adding === u.id && (
                   <span className="text-xs text-[var(--color-ink-soft)]">…</span>
                 )}

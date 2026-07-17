@@ -89,6 +89,15 @@ export const huddleReactionsSchema = z.object({
   reactions: z.array(reactionTokenSchema).min(1).max(8),
 });
 
+// Custom status: an emoji token (unicode or :name:), short text, and an
+// optional auto-clear time. At least one of emoji/text should be present for
+// the status to be meaningful (enforced in the route).
+export const statusSchema = z.object({
+  emoji: reactionTokenSchema.nullable().optional(),
+  text: z.string().trim().max(100).nullable().optional(),
+  expiresAt: z.string().datetime().nullable().optional(),
+});
+
 export const updateRoleSchema = z.object({
   role: z.enum(["EMPLOYEE", "ADMIN"]),
 });

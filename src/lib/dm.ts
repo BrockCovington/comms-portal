@@ -18,3 +18,20 @@ export function otherMemberImage(
   const other = members.find((m) => m.userId !== currentUserId);
   return other?.user.image ?? null;
 }
+
+// The other participant's custom status, for the DM list. Resolved to inactive
+// once expired (same rule as the status API).
+export function otherMemberStatus(
+  members: {
+    userId: string;
+    user: { statusEmoji: string | null; statusText: string | null; statusExpiresAt: Date | null };
+  }[],
+  currentUserId: string
+): { emoji: string | null; text: string | null } {
+  const other = members.find((m) => m.userId !== currentUserId)?.user;
+  if (!other?.statusEmoji) return { emoji: null, text: null };
+  if (other.statusExpiresAt && other.statusExpiresAt.getTime() <= Date.now()) {
+    return { emoji: null, text: null };
+  }
+  return { emoji: other.statusEmoji, text: other.statusText };
+}

@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { decryptMessage } from "@/lib/crypto";
-import { otherMemberLabel, otherMemberImage } from "@/lib/dm";
+import { otherMemberLabel, otherMemberImage, otherMemberStatus } from "@/lib/dm";
 
 export type DmThreadSummary = {
   channelId: string;
   name: string;
   image: string | null;
+  statusEmoji: string | null;
+  statusText: string | null;
   hasUnread: boolean;
   lastMessageAt: Date | null;
   lastMessagePreview: string;
@@ -24,7 +26,21 @@ export async function getDmThreadsForUser(userId: string): Promise<DmThreadSumma
     where: { isDm: true, members: { some: { userId } } },
     select: {
       id: true,
-      members: { select: { userId: true, user: { select: { name: true, email: true, image: true } } } },
+      members: {
+        select: {
+          userId: true,
+          user: {
+            select: {
+              name: true,
+              email: true,
+              image: true,
+              statusEmoji: true,
+              statusText: true,
+              statusExpiresAt: true,
+            },
+          },
+        },
+      },
     },
   });
   if (channels.length === 0) return [];
@@ -59,6 +75,8 @@ export async function getDmThreadsForUser(userId: string): Promise<DmThreadSumma
         channelId: c.id,
         name: otherMemberLabel(c.members, userId),
         image: otherMemberImage(c.members, userId),
+        statusEmoji: otherMemberStatus(c.members, userId).emoji,
+        statusText: otherMemberStatus(c.members, userId).text,
         hasUnread: !!last && (!lastReadAt || last.createdAt > lastReadAt),
         lastMessageAt: last?.createdAt ?? null,
         lastMessagePreview: last

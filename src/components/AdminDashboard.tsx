@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Avatar } from "@/components/Avatar";
+import { StatusBadge } from "@/components/StatusBadge";
+import type { UserStatusFields } from "@/lib/status";
 
 type Role = "EMPLOYEE" | "ADMIN";
 
@@ -11,7 +13,7 @@ type AdminUser = {
   email: string;
   image: string | null;
   role: Role;
-};
+} & UserStatusFields;
 
 type AdminChannel = {
   id: string;
@@ -88,7 +90,10 @@ export function AdminDashboard({
                 <Avatar name={u.name ?? u.email} image={u.image} size={28} />
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-[var(--color-ink)]">{u.name ?? u.email}</p>
+                  <p className="flex items-center gap-1.5 truncate text-sm text-[var(--color-ink)]">
+                    <span className="truncate">{u.name ?? u.email}</span>
+                    <StatusBadge emoji={u.statusEmoji} text={u.statusText} expiresAt={u.statusExpiresAt} />
+                  </p>
                   <p className="truncate text-xs text-[var(--color-ink-soft)]">{u.email}</p>
                 </div>
                 <select

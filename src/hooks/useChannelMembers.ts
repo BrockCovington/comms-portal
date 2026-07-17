@@ -4,7 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 
 export type ChannelMember = {
   userId: string;
-  user: { id: string; name: string | null; email: string; image: string | null };
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+    image: string | null;
+    statusEmoji?: string | null;
+    statusText?: string | null;
+    statusExpiresAt?: string | null;
+  };
 };
 
 export function useChannelMembers(channelId: string) {

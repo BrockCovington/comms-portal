@@ -103,7 +103,7 @@ export async function deliverMessage(input: DeliverInput): Promise<{ message: De
       parentId: true,
       createdAt: true,
       editedAt: true,
-      user: { select: { id: true, name: true, image: true } },
+      user: { select: { id: true, name: true, image: true, statusEmoji: true, statusText: true, statusExpiresAt: true } },
     },
   });
 

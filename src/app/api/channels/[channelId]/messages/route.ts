@@ -39,7 +39,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       createdAt: true,
       editedAt: true,
       deletedAt: true,
-      user: { select: { id: true, name: true, image: true } },
+      user: { select: { id: true, name: true, image: true, statusEmoji: true, statusText: true, statusExpiresAt: true } },
       _count: { select: { replies: true } },
     },
   });

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { DmThreadSummary } from "@/lib/dms";
 import { Avatar } from "@/components/Avatar";
+import { StatusBadge } from "@/components/StatusBadge";
 
 function relativeTime(date: Date | string): string {
   const diffMs = Date.now() - new Date(date).getTime();
@@ -67,8 +68,9 @@ export function DmListColumn({
 
                 <span className="min-w-0 flex-1">
                   <span className="flex items-baseline justify-between gap-2">
-                    <span className={`truncate text-sm ${t.hasUnread ? "font-semibold text-white" : ""}`}>
-                      {t.name}
+                    <span className={`flex min-w-0 items-center gap-1 truncate text-sm ${t.hasUnread ? "font-semibold text-white" : ""}`}>
+                      <span className="truncate">{t.name}</span>
+                      <StatusBadge emoji={t.statusEmoji} text={t.statusText} className="inline-block h-3 w-3 object-contain" />
                     </span>
                     {t.lastMessageAt && (
                       <span className="shrink-0 text-[10px] text-[var(--color-on-sidebar-dim)]">

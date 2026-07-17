@@ -14,7 +14,7 @@ export default async function AdminPage() {
 
   const [users, channels] = await Promise.all([
     prisma.user.findMany({
-      select: { id: true, name: true, email: true, image: true, role: true },
+      select: { id: true, name: true, email: true, image: true, role: true, statusEmoji: true, statusText: true, statusExpiresAt: true },
       orderBy: { name: "asc" },
     }),
     prisma.channel.findMany({

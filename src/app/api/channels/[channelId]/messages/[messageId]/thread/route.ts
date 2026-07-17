@@ -15,7 +15,7 @@ const MESSAGE_SELECT = {
   createdAt: true,
   editedAt: true,
   deletedAt: true,
-  user: { select: { id: true, name: true, image: true } },
+  user: { select: { id: true, name: true, image: true, statusEmoji: true, statusText: true, statusExpiresAt: true } },
 } as const;
 
 function renderBody<T extends { body: string; deletedAt: Date | null }>(m: T) {

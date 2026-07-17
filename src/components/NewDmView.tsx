@@ -4,8 +4,15 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMobileNav } from "@/components/MobileNavContext";
 import { Avatar } from "@/components/Avatar";
+import { StatusBadge } from "@/components/StatusBadge";
+import type { UserStatusFields } from "@/lib/status";
 
-type OrgUser = { id: string; name: string | null; email: string; image: string | null };
+type OrgUser = {
+  id: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+} & UserStatusFields;
 
 // Full-pane "new DM" compose view — replaces the old NewDmPicker dropdown,
 // which broke when reused inside DmListColumn's narrow pencil-button
@@ -97,8 +104,9 @@ export function NewDmView() {
             >
               <Avatar name={u.name ?? u.email} image={u.image} size={32} />
 
-              <span className="min-w-0 flex-1 truncate text-[var(--color-ink)]">
-                {u.name ?? u.email}
+              <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[var(--color-ink)]">
+                <span className="truncate">{u.name ?? u.email}</span>
+                <StatusBadge emoji={u.statusEmoji} text={u.statusText} expiresAt={u.statusExpiresAt} />
               </span>
               {starting === u.id && (
                 <span className="text-xs text-[var(--color-ink-soft)]">Starting…</span>

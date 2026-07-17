@@ -8,6 +8,7 @@ import { EditHistory } from "@/components/EditHistory";
 import { ForwardDialog } from "@/components/ForwardDialog";
 import { useCustomEmoji } from "@/components/CustomEmojiContext";
 import { Avatar } from "@/components/Avatar";
+import { StatusBadge } from "@/components/StatusBadge";
 
 // The embedded original shown on a forwarded message.
 function ForwardedEmbed({ forwarded }: { forwarded: NonNullable<ChatMessage["forwarded"]> }) {
@@ -263,6 +264,11 @@ export function MessageRow({
           <span className="text-sm font-semibold text-[var(--color-ink)]">
             {isMine ? "You" : message.user.name ?? "Unknown"}
           </span>
+          <StatusBadge
+            emoji={message.user.statusEmoji}
+            text={message.user.statusText}
+            expiresAt={message.user.statusExpiresAt}
+          />
           <time className="text-xs text-[var(--color-ink-soft)]">
             {new Date(message.createdAt).toLocaleTimeString([], {
               hour: "2-digit",
