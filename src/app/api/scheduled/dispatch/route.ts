@@ -6,12 +6,22 @@ import { computeNextRun } from "@/lib/workflows";
 
 const BATCH = 200;
 
-// POST /api/scheduled/dispatch — delivers every scheduled message whose time
-// has come, and fires every recurring Workflow that's due. Meant to be hit by a
-// scheduler (external cron) every minute; see the deploy notes. Protected by
-// CRON_SECRET: without a matching bearer token it refuses (fail closed — this
-// endpoint sends messages as users).
+// /api/scheduled/dispatch — delivers every scheduled message whose time has
+// come, and fires every recurring Workflow that's due. Runs every minute via
+// the Vercel Cron in vercel.json (GET), and also accepts POST so an external
+// scheduler can drive it too. Protected by CRON_SECRET: without a matching
+// bearer token it refuses (fail closed — this endpoint sends messages as
+// users). Vercel Cron automatically sends `Authorization: Bearer $CRON_SECRET`
+// when that env var is set, which is exactly what this checks.
+export async function GET(request: Request) {
+  return dispatch(request);
+}
+
 export async function POST(request: Request) {
+  return dispatch(request);
+}
+
+async function dispatch(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     return NextResponse.json({ error: "Dispatcher not configured (CRON_SECRET unset)" }, { status: 503 });
