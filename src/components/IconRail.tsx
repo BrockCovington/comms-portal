@@ -8,6 +8,7 @@ import { NotificationPrefsPanel } from "@/components/NotificationPrefsPanel";
 import { ProfilePanel } from "@/components/ProfilePanel";
 import { AppearancePanel } from "@/components/AppearancePanel";
 import { Avatar } from "@/components/Avatar";
+import { useHuddleControls } from "@/components/HuddleProvider";
 import {
   HomeIcon,
   DmsIcon,
@@ -18,6 +19,13 @@ import {
   PlusIcon,
   MoreIcon,
   MoonIcon,
+  PencilIcon,
+  HashIcon,
+  HeadphonesIcon,
+  CanvasIcon,
+  ListIcon,
+  WorkflowIcon,
+  InvitePeopleIcon,
 } from "@/components/RailIcons";
 
 // A far-future sentinel: focus mode pauses notifications indefinitely (until
@@ -73,11 +81,41 @@ export function IconRail({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { startOrJoin } = useHuddleControls();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [notifPrefsOpen, setNotifPrefsOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  // The channel currently open (if any) — lets "Create → Huddle" start one in
+  // context; otherwise it drops you at home to pick a conversation first.
+  const currentChannelId = pathname?.startsWith("/c/") ? pathname.slice(3) : null;
+
+  async function createCanvas() {
+    setCreateOpen(false);
+    const res = await fetch("/api/canvas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Untitled canvas", body: "" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.id) router.push(`/canvas/${data.id}`);
+  }
+
+  function startHuddle() {
+    setCreateOpen(false);
+    if (currentChannelId) startOrJoin(currentChannelId, "Huddle");
+    else router.push("/c");
+  }
+
+  function invitePeople() {
+    setCreateOpen(false);
+    window.alert(
+      "Teammates join by signing in with their company Google account — no invite needed. Sign-in is locked to your company domain."
+    );
+  }
 
   // Focus mode = Do Not Disturb. Reads the current dndUntil so the moon also
   // reflects a timed snooze set from the Notifications panel; toggling on sets
@@ -168,22 +206,10 @@ export function IconRail({
         label="Activity"
         badge={unreadCount}
       />
-      <RailLink href="/later" active={pathname === "/later"} icon={<LaterIcon />} label="Later" />
       <RailLink href="/files" active={pathname === "/files"} icon={<FilesIcon />} label="Files" />
-      <RailLink href="/admin" active={pathname === "/admin"} icon={<ToolsIcon />} label="Tools" />
+      <RailLink href="/later" active={pathname === "/later"} icon={<LaterIcon />} label="Later" />
 
-      <button
-        onClick={createChannel}
-        disabled={creating}
-        className={`${railItemClass(false)} disabled:opacity-50`}
-        aria-label="Create channel"
-        title="Create channel"
-      >
-        <PlusIcon />
-        <span className="text-[10px] leading-none">New</span>
-      </button>
-
-      <div className="relative mt-auto">
+      <div className="relative">
         {moreOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />
@@ -227,43 +253,187 @@ export function IconRail({
         </button>
       </div>
 
-      <button
-        onClick={toggleFocus}
-        disabled={focusBusy}
-        className={`${railItemClass(focusOn)} disabled:opacity-50`}
-        aria-label={focusOn ? "Turn off focus mode" : "Turn on focus mode"}
-        title={focusOn ? "Focus mode on — notifications paused" : "Focus mode — pause notifications"}
-      >
-        <MoonIcon />
-        <span className="text-[10px] leading-none">Focus</span>
-      </button>
+      <RailLink href="/admin" active={pathname === "/admin"} icon={<ToolsIcon />} label="Admin" />
 
-      <div className="relative mt-1">
-        {profileOpen && (
-          <ProfilePanel
-            name={user.name}
-            email={user.email}
-            image={user.image}
-            onClose={() => setProfileOpen(false)}
+      {/* Bottom cluster: Create, Focus, and the profile avatar — circular. */}
+      <div className="relative mt-auto flex flex-col items-center gap-3 pt-4">
+        {createOpen && (
+          <CreateMenu
+            onClose={() => setCreateOpen(false)}
+            onMessage={() => { setCreateOpen(false); router.push("/dms/new"); }}
+            onChannel={() => { setCreateOpen(false); createChannel(); }}
+            onHuddle={startHuddle}
+            onCanvas={createCanvas}
+            onInvite={invitePeople}
           />
         )}
         <button
-          onClick={() => setProfileOpen((v) => !v)}
-          className="relative rounded-full ring-2 ring-transparent transition hover:ring-white/40"
-          aria-label="Your profile"
-          title={focusOn ? "Your profile — focus mode on" : "Your profile"}
+          onClick={() => setCreateOpen((v) => !v)}
+          disabled={creating}
+          aria-label="Create"
+          title="Create"
+          className={`flex h-10 w-10 items-center justify-center rounded-full transition disabled:opacity-50 ${
+            createOpen ? "bg-white/20 text-white" : "bg-white/10 text-[var(--color-on-sidebar-dim)] hover:bg-white/20 hover:text-white"
+          }`}
         >
-          <Avatar name={user.name} image={user.image} size={32} variant="solid" />
-          {focusOn && (
-            <span
-              className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--color-nav-rail)] bg-[var(--color-accent)]"
-              title="Focus mode on"
-            >
-              <MoonIcon className="h-2.5 w-2.5 text-white" />
-            </span>
-          )}
+          <PlusIcon className="h-5 w-5" />
         </button>
+
+        <button
+          onClick={toggleFocus}
+          disabled={focusBusy}
+          aria-label={focusOn ? "Turn off focus mode" : "Turn on focus mode"}
+          title={focusOn ? "Focus mode on — notifications paused" : "Focus mode — pause notifications"}
+          className={`flex h-10 w-10 items-center justify-center rounded-full transition disabled:opacity-50 ${
+            focusOn ? "bg-white/20 text-white" : "bg-white/10 text-[var(--color-on-sidebar-dim)] hover:bg-white/20 hover:text-white"
+          }`}
+        >
+          <MoonIcon className="h-5 w-5" />
+        </button>
+
+        <div className="relative">
+          {profileOpen && (
+            <ProfilePanel
+              name={user.name}
+              email={user.email}
+              image={user.image}
+              onClose={() => setProfileOpen(false)}
+            />
+          )}
+          <button
+            onClick={() => setProfileOpen((v) => !v)}
+            className="relative rounded-full ring-2 ring-transparent transition hover:ring-white/40"
+            aria-label="Your profile"
+            title={focusOn ? "Your profile — focus mode on" : "Your profile"}
+          >
+            <Avatar name={user.name} image={user.image} size={36} variant="solid" />
+            {focusOn && (
+              <span
+                className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--color-nav-rail)] bg-[var(--color-accent)]"
+                title="Focus mode on"
+              >
+                <MoonIcon className="h-2.5 w-2.5 text-white" />
+              </span>
+            )}
+          </button>
+        </div>
       </div>
     </aside>
+  );
+}
+
+function CreateRow({
+  icon,
+  color,
+  title,
+  subtitle,
+  soon,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  color?: string;
+  title: string;
+  subtitle: string;
+  soon?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={soon}
+      className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-[var(--color-accent-soft)] disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent"
+    >
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${color ? "text-white" : "text-[var(--color-ink-soft)]"}`}
+        style={color ? { backgroundColor: color } : undefined}
+      >
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
+          {title}
+          {soon && (
+            <span className="rounded bg-[var(--color-accent-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-accent)]">
+              Soon
+            </span>
+          )}
+        </span>
+        <span className="block truncate text-xs text-[var(--color-ink-soft)]">{subtitle}</span>
+      </span>
+    </button>
+  );
+}
+
+function CreateMenu({
+  onClose,
+  onMessage,
+  onChannel,
+  onHuddle,
+  onCanvas,
+  onInvite,
+}: {
+  onClose: () => void;
+  onMessage: () => void;
+  onChannel: () => void;
+  onHuddle: () => void;
+  onCanvas: () => void;
+  onInvite: () => void;
+}) {
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div className="fixed bottom-4 left-[5.5rem] z-50 w-80 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-2 text-[var(--color-ink)] shadow-xl">
+        <p className="px-2 py-1 text-sm font-semibold">Create</p>
+        <CreateRow
+          icon={<PencilIcon className="h-4 w-4" />}
+          color="#7c00dd"
+          title="Message"
+          subtitle="Start a conversation in a DM or channel"
+          onClick={onMessage}
+        />
+        <CreateRow
+          icon={<HashIcon className="h-4 w-4" />}
+          color="#84848a"
+          title="Channel"
+          subtitle="Start a group conversation by topic"
+          onClick={onChannel}
+        />
+        <CreateRow
+          icon={<HeadphonesIcon className="h-4 w-4" />}
+          color="#16a06b"
+          title="Huddle"
+          subtitle="Start a video or audio chat"
+          onClick={onHuddle}
+        />
+        <CreateRow
+          icon={<CanvasIcon className="h-4 w-4" />}
+          color="#3675f8"
+          title="Canvas"
+          subtitle="Create and share content"
+          onClick={onCanvas}
+        />
+        <CreateRow
+          icon={<ListIcon className="h-4 w-4" />}
+          color="#b7791f"
+          title="List"
+          subtitle="Track and manage projects"
+          soon
+        />
+        <CreateRow
+          icon={<WorkflowIcon className="h-4 w-4" />}
+          color="#b91c1c"
+          title="Workflow"
+          subtitle="Automate everyday tasks"
+          soon
+        />
+        <div className="my-1 border-t border-[var(--color-line)]" />
+        <CreateRow
+          icon={<InvitePeopleIcon className="h-5 w-5" />}
+          title="Invite people"
+          subtitle="How teammates join the workspace"
+          onClick={onInvite}
+        />
+      </div>
+    </>
   );
 }

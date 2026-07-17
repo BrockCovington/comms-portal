@@ -309,6 +309,7 @@ export function Sidebar({
           <ul className="mb-3 space-y-0.5">
             <QuickLink href="/unreads" icon="●" label="Unreads" active={pathname === "/unreads"} />
             <QuickLink href="/threads" icon="⚭" label="Threads" active={pathname === "/threads"} />
+            <QuickLink href="/canvas" icon="📝" label="Canvases" active={pathname?.startsWith("/canvas") ?? false} />
             <QuickLink href="/drafts" icon="✎" label="Drafts & sent" active={pathname === "/drafts"} />
           </ul>
 

@@ -69,6 +69,7 @@ model User {
   channelPreferences      ChannelPreference[]
   channelSections         ChannelSection[]
   scheduledMessages       ScheduledMessage[]
+  canvases                Canvas[]
 }
 
 model Account {
@@ -475,6 +476,23 @@ model ChannelPreference {
 
   @@unique([userId, channelId])
   @@index([userId])
+}
+
+// A Canvas — a titled rich-text doc ("create and share content"). Body is
+// encrypted at rest like message bodies. Workspace-wide readable; editable by
+// its creator (an admin can also delete).
+model Canvas {
+  id          String   @id @default(cuid())
+  title       String
+  body        String   @default("") // ciphertext (encryptMessage), may be empty
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([createdById])
+  @@index([updatedAt])
 }
 
 // A user's custom sidebar section (personal — like Slack, sections organize

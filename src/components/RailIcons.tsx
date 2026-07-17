@@ -262,6 +262,53 @@ export function TrashIcon(props: IconProps) {
   );
 }
 
+// --- Create-menu icons ---
+
+export function HashIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M9 4L7 20M17 4l-2 16M4 9.5h16M3 14.5h16" />
+    </Line>
+  );
+}
+
+export function CanvasIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M6 4h8l4 4v12H6z" />
+      <path d="M14 4v4h4" />
+      <path d="M9 13h6M9 16h4" />
+    </Line>
+  );
+}
+
+export function ListIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M9 6h11M9 12h11M9 18h11" />
+      <path d="M3.5 5.5l1 1 1.6-1.8M3.5 11.5l1 1 1.6-1.8M3.5 17.5l1 1 1.6-1.8" />
+    </Line>
+  );
+}
+
+export function WorkflowIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M8 5l11 7-11 7z" />
+    </Line>
+  );
+}
+
+export function InvitePeopleIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+      <path d="M18 8.5v5M15.5 11h5" />
+    </Line>
+  );
+}
+
 // Filled dots — reads cleaner than stroked circles at this size.
 export function MoreIcon({ className }: IconProps) {
   return (
