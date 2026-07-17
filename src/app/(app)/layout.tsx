@@ -7,6 +7,7 @@ import { TopBar } from "@/components/TopBar";
 import { IconRail } from "@/components/IconRail";
 import { NotificationToasts } from "@/components/NotificationToasts";
 import { IncomingHuddle } from "@/components/IncomingHuddle";
+import { HuddleProvider } from "@/components/HuddleProvider";
 import { CustomEmojiProvider } from "@/components/CustomEmojiContext";
 import { getChannelsWithUnread } from "@/lib/channels";
 import { getChannelSections } from "@/lib/channelSections";
@@ -53,33 +54,35 @@ export default async function AppLayout({
 
   return (
     <CustomEmojiProvider initialEmoji={customEmoji}>
-      <AppShell
-        topBar={<TopBar user={user} />}
-        rail={
-          <IconRail
-            workspaceName={process.env.NEXT_PUBLIC_WORKSPACE_NAME ?? "Workspace"}
-            currentUserId={userId}
-            user={user}
-            signOutAction={handleSignOut}
-          />
-        }
-        sidebar={
-          <Sidebar
-            channels={channelsWithUnread}
-            sections={channelSections}
-            dmThreads={dmThreads}
-            threads={threads}
-            savedMessages={savedMessages}
-            drafts={drafts}
-            files={files}
-            currentUserId={userId}
-          />
-        }
-      >
-        {children}
-      </AppShell>
-      <NotificationToasts currentUserId={userId} />
-      <IncomingHuddle currentUserId={userId} />
+      <HuddleProvider currentUserId={userId}>
+        <AppShell
+          topBar={<TopBar user={user} />}
+          rail={
+            <IconRail
+              workspaceName={process.env.NEXT_PUBLIC_WORKSPACE_NAME ?? "Workspace"}
+              currentUserId={userId}
+              user={user}
+              signOutAction={handleSignOut}
+            />
+          }
+          sidebar={
+            <Sidebar
+              channels={channelsWithUnread}
+              sections={channelSections}
+              dmThreads={dmThreads}
+              threads={threads}
+              savedMessages={savedMessages}
+              drafts={drafts}
+              files={files}
+              currentUserId={userId}
+            />
+          }
+        >
+          {children}
+        </AppShell>
+        <NotificationToasts currentUserId={userId} />
+        <IncomingHuddle currentUserId={userId} />
+      </HuddleProvider>
     </CustomEmojiProvider>
   );
 }

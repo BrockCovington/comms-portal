@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { subscribeChannel, unsubscribeChannel } from "@/lib/pusherClient";
+import { useHuddleControls } from "@/components/HuddleProvider";
 
 // Mirrors userChannelName() in @/lib/pusher — duplicated (not imported) for
 // the same reason the hooks do: that module builds the server-side Pusher
@@ -49,7 +50,7 @@ function playRing(ctx: AudioContext) {
 // the huddle roster/ring in useHuddle only runs while you're viewing that
 // channel, so it can't alert you from elsewhere.
 export function IncomingHuddle({ currentUserId }: { currentUserId: string }) {
-  const router = useRouter();
+  const { startOrJoin } = useHuddleControls();
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);
   pathnameRef.current = pathname;
@@ -130,7 +131,10 @@ export function IncomingHuddle({ currentUserId }: { currentUserId: string }) {
   }
   function join(inv: ActiveInvite) {
     dismiss(inv.key);
-    router.push(`/c/${inv.channelId}`);
+    // Open the huddle in place (global floating dock) — no navigation. For a
+    // DM the stored channel name is a debug label, so show who started it.
+    const label = inv.isDm ? inv.actorName : `#${inv.channelName}`;
+    startOrJoin(inv.channelId, label);
   }
 
   if (invites.length === 0) return null;

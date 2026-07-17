@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  LiveKitRoom,
-  RoomAudioRenderer,
   useParticipants,
   useLocalParticipant,
   useTracks,
@@ -21,7 +19,7 @@ import {
 } from "livekit-client";
 import type { TrackReference } from "@livekit/components-core";
 import type { KrispNoiseFilterProcessor } from "@livekit/krisp-noise-filter";
-import { useHuddle, type HuddleParticipant, type HuddleFloatingReaction } from "@/hooks/useHuddle";
+import type { HuddleParticipant, HuddleFloatingReaction } from "@/hooks/useHuddleRoster";
 import { decodeParticipantImage } from "@/lib/huddle";
 import { EmojiPicker } from "@/components/EmojiPicker";
 
@@ -405,13 +403,14 @@ function NoteInput({
   );
 }
 
-function HuddleControls({
+export function HuddleControls({
   channelId,
   channelName,
   reactions,
   onLeave,
   onSendReaction,
   onSendNote,
+  onOpenChannel,
 }: {
   channelId: string;
   channelName: string;
@@ -419,6 +418,9 @@ function HuddleControls({
   onLeave: () => void;
   onSendReaction: (emoji: string) => void;
   onSendNote: (body: string, attachmentIds?: string[]) => Promise<void>;
+  // When set (the global dock), a header button jumps to the channel without
+  // tearing down the huddle.
+  onOpenChannel?: () => void;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -434,7 +436,16 @@ function HuddleControls({
     <div className="overflow-hidden rounded-lg border border-[var(--color-line)]">
       <div className="flex items-center gap-2 bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-white">
         <span>🎧</span>
-        <span>Huddle in #{channelName}</span>
+        <span className="min-w-0 flex-1 truncate">Huddle in {channelName}</span>
+        {onOpenChannel && (
+          <button
+            onClick={onOpenChannel}
+            className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium text-white/90 hover:bg-white/20"
+            title="Open channel"
+          >
+            Open ↗
+          </button>
+        )}
       </div>
       <div className="relative bg-[var(--color-accent-soft)]/40 p-4">
         <FloatingReactions reactions={reactions} />
@@ -569,7 +580,7 @@ function FloatingReactions({ reactions }: { reactions: HuddleFloatingReaction[] 
   );
 }
 
-function WaitingAvatars({ participants }: { participants: HuddleParticipant[] }) {
+export function WaitingAvatars({ participants }: { participants: HuddleParticipant[] }) {
   return (
     <div className="flex -space-x-2">
       {participants.slice(0, 5).map((p) => (
@@ -581,77 +592,3 @@ function WaitingAvatars({ participants }: { participants: HuddleParticipant[] })
   );
 }
 
-export function HuddleBar({
-  channelId,
-  channelName,
-  currentUserId,
-  isArchived,
-  onSendNote,
-}: {
-  channelId: string;
-  channelName: string;
-  currentUserId: string;
-  isArchived?: boolean;
-  onSendNote: (body: string, attachmentIds?: string[]) => Promise<void>;
-}) {
-  const {
-    participants,
-    isJoined,
-    joining,
-    error,
-    token,
-    serverUrl,
-    join,
-    leave,
-    reactions,
-    sendReaction,
-  } = useHuddle(channelId, currentUserId);
-
-  // No huddle to show, nothing to join — same "frozen" treatment as the
-  // composer gets in an archived channel.
-  if (isArchived) return null;
-
-  return (
-    <div className="shrink-0 border-b border-[var(--color-line)] px-5 py-2">
-      {!isJoined ? (
-        <div className="flex items-center gap-3">
-          {participants.length > 0 && <WaitingAvatars participants={participants} />}
-          <button
-            onClick={join}
-            disabled={joining}
-            className="rounded-md px-3 py-1.5 text-xs font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)] disabled:opacity-50"
-          >
-            {joining
-              ? "Joining…"
-              : participants.length > 0
-                ? `🎧 Join huddle (${participants.length})`
-                : "🎧 Start huddle"}
-          </button>
-          {error && <span className="text-xs text-red-600">{error}</span>}
-        </div>
-      ) : (
-        token &&
-        serverUrl && (
-          <LiveKitRoom
-            serverUrl={serverUrl}
-            token={token}
-            connect
-            audio
-            video={false}
-            onDisconnected={leave}
-          >
-            <HuddleControls
-              channelId={channelId}
-              channelName={channelName}
-              reactions={reactions}
-              onLeave={leave}
-              onSendReaction={sendReaction}
-              onSendNote={onSendNote}
-            />
-            <RoomAudioRenderer />
-          </LiveKitRoom>
-        )
-      )}
-    </div>
-  );
-}

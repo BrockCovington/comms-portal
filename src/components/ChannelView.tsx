@@ -13,7 +13,7 @@ import { PinnedPanel } from "@/components/PinnedPanel";
 import { Avatar } from "@/components/Avatar";
 import { ChannelNotifyMenu } from "@/components/ChannelNotifyMenu";
 import { ScheduledPanel } from "@/components/ScheduledPanel";
-import { HuddleBar } from "@/components/HuddleBar";
+import { HuddleLauncher } from "@/components/HuddleLauncher";
 import { useMobileNav } from "@/components/MobileNavContext";
 
 export function ChannelView({
@@ -296,12 +296,11 @@ export function ChannelView({
           </div>
         </header>
 
-        <HuddleBar
+        <HuddleLauncher
           channelId={channelId}
           channelName={channelName}
-          currentUserId={currentUserId}
+          isDm={isDm}
           isArchived={isArchived}
-          onSendNote={sendMessage}
         />
 
         <MessageList
