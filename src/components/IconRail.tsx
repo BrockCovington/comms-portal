@@ -104,6 +104,17 @@ export function IconRail({
     if (res.ok && data.id) router.push(`/canvas/${data.id}`);
   }
 
+  async function createList() {
+    setCreateOpen(false);
+    const res = await fetch("/api/lists", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Untitled list" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.id) router.push(`/lists/${data.id}`);
+  }
+
   function startHuddle() {
     setCreateOpen(false);
     if (currentChannelId) startOrJoin(currentChannelId, "Huddle");
@@ -264,6 +275,7 @@ export function IconRail({
             onChannel={() => { setCreateOpen(false); createChannel(); }}
             onHuddle={startHuddle}
             onCanvas={createCanvas}
+            onList={createList}
             onInvite={invitePeople}
           />
         )}
@@ -370,6 +382,7 @@ function CreateMenu({
   onChannel,
   onHuddle,
   onCanvas,
+  onList,
   onInvite,
 }: {
   onClose: () => void;
@@ -377,6 +390,7 @@ function CreateMenu({
   onChannel: () => void;
   onHuddle: () => void;
   onCanvas: () => void;
+  onList: () => void;
   onInvite: () => void;
 }) {
   return (
@@ -417,7 +431,7 @@ function CreateMenu({
           color="#b7791f"
           title="List"
           subtitle="Track and manage projects"
-          soon
+          onClick={onList}
         />
         <CreateRow
           icon={<WorkflowIcon className="h-4 w-4" />}
