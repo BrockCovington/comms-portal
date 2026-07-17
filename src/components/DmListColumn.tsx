@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import type { DmThreadSummary } from "@/lib/dms";
 import { Avatar } from "@/components/Avatar";
 import { StatusBadge } from "@/components/StatusBadge";
+import { HuddleBadge } from "@/components/HuddleBadge";
+import type { HuddleParticipant } from "@/hooks/useHuddleRoster";
 
 function relativeTime(date: Date | string): string {
   const diffMs = Date.now() - new Date(date).getTime();
@@ -22,10 +24,12 @@ function relativeTime(date: Date | string): string {
 // instead of the plain name-only list the regular sidebar shows.
 export function DmListColumn({
   dmThreads,
+  huddles = {},
   activeChannelId,
   onNavigate,
 }: {
   dmThreads: DmThreadSummary[];
+  huddles?: Record<string, HuddleParticipant[]>;
   activeChannelId: string | null;
   onNavigate: () => void;
 }) {
@@ -90,6 +94,7 @@ export function DmListColumn({
                       : "No messages yet"}
                   </span>
                 </span>
+                <HuddleBadge participants={huddles[t.channelId]} />
                 {t.hasUnread && !active && (
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-surface)]" />
                 )}

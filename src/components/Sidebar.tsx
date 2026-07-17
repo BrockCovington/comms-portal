@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { subscribeChannel, unsubscribeChannel } from "@/lib/pusherClient";
 import { useMobileNav } from "@/components/MobileNavContext";
+import { HuddleBadge } from "@/components/HuddleBadge";
+import type { HuddleParticipant } from "@/hooks/useHuddleRoster";
 import { BrowseChannelsPanel } from "@/components/BrowseChannelsPanel";
 import { DmListColumn } from "@/components/DmListColumn";
 import { ThreadListColumn } from "@/components/ThreadListColumn";
@@ -91,6 +93,31 @@ export function Sidebar({
   // `hasUnread` from page load. A Set (not per-channel state) keeps this to
   // one re-render per event regardless of channel count.
   const [liveUnread, setLiveUnread] = useState<Set<string>>(new Set());
+
+  // Live huddle presence per channel (channelId -> participants). Seeded once
+  // from a workspace-wide snapshot (so a huddle already running at page load
+  // shows up), then kept current from the same per-channel Pusher events the
+  // in-channel roster uses, with a 30s reconcile as a safety net for a missed
+  // "left" (e.g. a crashed tab).
+  const [huddles, setHuddles] = useState<Record<string, HuddleParticipant[]>>({});
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      fetch("/api/huddles/active", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : { huddles: {} }))
+        .then((d) => {
+          if (alive) setHuddles(d.huddles ?? {});
+        })
+        .catch(() => {});
+    };
+    load();
+    const interval = setInterval(load, 30000);
+    return () => {
+      alive = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   const activeChannelIdRef = useRef(activeChannelId);
   useEffect(() => {
     activeChannelIdRef.current = activeChannelId;
@@ -130,17 +157,42 @@ export function Sidebar({
       setLiveUnread((prev) => (prev.has(channelId) ? prev : new Set(prev).add(channelId)));
     };
 
+    const onHuddleJoined = (p: HuddleParticipant, channelId: string) => {
+      setHuddles((prev) => {
+        const existing = prev[channelId] ?? [];
+        if (existing.some((x) => x.id === p.id)) return prev;
+        return { ...prev, [channelId]: [...existing, p] };
+      });
+    };
+    const onHuddleLeft = (p: { id: string }, channelId: string) => {
+      setHuddles((prev) => {
+        const existing = prev[channelId];
+        if (!existing) return prev;
+        const next = existing.filter((x) => x.id !== p.id);
+        const copy = { ...prev };
+        if (next.length === 0) delete copy[channelId];
+        else copy[channelId] = next;
+        return copy;
+      });
+    };
+
     const handlers = ids.map((id, i) => {
-      const handler = (payload: { message: { parentId?: string | null } }) => onActivity(payload, id);
-      boundChannels[i].bind("new-message", handler);
-      boundChannels[i].bind("new-reply", handler);
-      return handler;
+      const onMsg = (payload: { message: { parentId?: string | null } }) => onActivity(payload, id);
+      const onJoined = (payload: HuddleParticipant) => onHuddleJoined(payload, id);
+      const onLeft = (payload: { id: string }) => onHuddleLeft(payload, id);
+      boundChannels[i].bind("new-message", onMsg);
+      boundChannels[i].bind("new-reply", onMsg);
+      boundChannels[i].bind("huddle-participant-joined", onJoined);
+      boundChannels[i].bind("huddle-participant-left", onLeft);
+      return { onMsg, onJoined, onLeft };
     });
 
     return () => {
       ids.forEach((id, i) => {
-        boundChannels[i].unbind("new-message", handlers[i]);
-        boundChannels[i].unbind("new-reply", handlers[i]);
+        boundChannels[i].unbind("new-message", handlers[i].onMsg);
+        boundChannels[i].unbind("new-reply", handlers[i].onMsg);
+        boundChannels[i].unbind("huddle-participant-joined", handlers[i].onJoined);
+        boundChannels[i].unbind("huddle-participant-left", handlers[i].onLeft);
         unsubscribeChannel(names[i]);
       });
     };
@@ -271,6 +323,7 @@ export function Sidebar({
       // Muted channels never show an unread dot, even from a live event.
       unread: !c.muted && c.id !== activeChannelId && (c.hasUnread || liveUnread.has(c.id)),
       muted: !!c.muted,
+      huddle: huddles[c.id],
       onNavigate: () => setOpen(false),
     };
   }
@@ -291,6 +344,7 @@ export function Sidebar({
         {inDmContext ? (
           <DmListColumn
             dmThreads={dmThreads}
+            huddles={huddles}
             activeChannelId={activeChannelId}
             onNavigate={() => setOpen(false)}
           />
@@ -526,16 +580,9 @@ function ChannelLink({
   name,
   unread,
   muted,
+  huddle,
   onNavigate,
-}: {
-  href: string;
-  active: boolean;
-  prefix: string;
-  name: string;
-  unread: boolean;
-  muted?: boolean;
-  onNavigate: () => void;
-}) {
+}: ChannelLinkProps) {
   return (
     <li>
       <Link
@@ -548,10 +595,11 @@ function ChannelLink({
         }`}
       >
         <span className="text-[var(--color-on-sidebar-dim)]">{prefix}</span>
-        <span className={`truncate ${unread ? "font-semibold text-white" : ""}`}>{name}</span>
-        {muted && !active && <span className="ml-auto text-xs opacity-70">🔕</span>}
+        <span className={`min-w-0 truncate ${unread ? "font-semibold text-white" : ""}`}>{name}</span>
+        <HuddleBadge participants={huddle} className="ml-auto" />
+        {muted && !active && <span className={huddle?.length ? "text-xs opacity-70" : "ml-auto text-xs opacity-70"}>🔕</span>}
         {unread && (
-          <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-surface)]" />
+          <span className={`${huddle?.length ? "" : "ml-auto"} h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-surface)]`} />
         )}
       </Link>
     </li>
@@ -565,6 +613,7 @@ type ChannelLinkProps = {
   name: string;
   unread: boolean;
   muted?: boolean;
+  huddle?: HuddleParticipant[];
   onNavigate: () => void;
 };
 
@@ -668,10 +717,11 @@ function DraggableChannelRow({
         }`}
       >
         <span className="text-[var(--color-on-sidebar-dim)]">{link.prefix}</span>
-        <span className={`truncate ${link.unread ? "font-semibold text-white" : ""}`}>{link.name}</span>
-        {link.muted && !link.active && <span className="ml-auto text-xs opacity-70">🔕</span>}
+        <span className={`min-w-0 truncate ${link.unread ? "font-semibold text-white" : ""}`}>{link.name}</span>
+        <HuddleBadge participants={link.huddle} className="ml-auto group-hover/row:hidden" />
+        {link.muted && !link.active && <span className={`${link.huddle?.length ? "" : "ml-auto"} text-xs opacity-70`}>🔕</span>}
         {link.unread && !link.active && (
-          <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-surface)] group-hover/row:hidden" />
+          <span className={`${link.huddle?.length ? "" : "ml-auto"} h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-surface)] group-hover/row:hidden`} />
         )}
       </Link>
       <button
