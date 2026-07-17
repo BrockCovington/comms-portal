@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -17,7 +17,12 @@ import {
   ToolsIcon,
   PlusIcon,
   MoreIcon,
+  MoonIcon,
 } from "@/components/RailIcons";
+
+// A far-future sentinel: focus mode pauses notifications indefinitely (until
+// toggled off), reusing the same dndUntil field as timed snooze.
+const FOCUS_FOREVER = "2999-12-31T00:00:00.000Z";
 
 function railItemClass(active: boolean) {
   return `flex w-16 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 transition ${
@@ -73,6 +78,43 @@ export function IconRail({
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  // Focus mode = Do Not Disturb. Reads the current dndUntil so the moon also
+  // reflects a timed snooze set from the Notifications panel; toggling on sets
+  // it indefinitely, off clears it. All the actual suppression (notification
+  // pushes, incoming-huddle ring) already keys off dndUntil server-side.
+  const [dndUntil, setDndUntil] = useState<string | null>(null);
+  const [focusBusy, setFocusBusy] = useState(false);
+  const focusOn = !!dndUntil && new Date(dndUntil).getTime() > Date.now();
+
+  useEffect(() => {
+    fetch("/api/notification-preferences", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setDndUntil(d.dndUntil ?? null); })
+      .catch(() => {});
+  }, []);
+
+  async function toggleFocus() {
+    if (focusBusy) return;
+    setFocusBusy(true);
+    const next = focusOn ? null : FOCUS_FOREVER;
+    setDndUntil(next); // optimistic
+    try {
+      const res = await fetch("/api/notification-preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dndUntil: next }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setDndUntil(d.dndUntil ?? null);
+      }
+    } catch {
+      // Best-effort — leave the optimistic value; a reload re-syncs.
+    } finally {
+      setFocusBusy(false);
+    }
+  }
   // Just the badge count, not the dropdown — Activity is now a full page
   // (src/app/(app)/activity/page.tsx), this hook call only drives the
   // unread number shown on the rail icon.
@@ -185,6 +227,17 @@ export function IconRail({
         </button>
       </div>
 
+      <button
+        onClick={toggleFocus}
+        disabled={focusBusy}
+        className={`${railItemClass(focusOn)} disabled:opacity-50`}
+        aria-label={focusOn ? "Turn off focus mode" : "Turn on focus mode"}
+        title={focusOn ? "Focus mode on — notifications paused" : "Focus mode — pause notifications"}
+      >
+        <MoonIcon />
+        <span className="text-[10px] leading-none">Focus</span>
+      </button>
+
       <div className="relative mt-1">
         {profileOpen && (
           <ProfilePanel
@@ -196,11 +249,19 @@ export function IconRail({
         )}
         <button
           onClick={() => setProfileOpen((v) => !v)}
-          className="rounded-full ring-2 ring-transparent transition hover:ring-white/40"
+          className="relative rounded-full ring-2 ring-transparent transition hover:ring-white/40"
           aria-label="Your profile"
-          title="Your profile"
+          title={focusOn ? "Your profile — focus mode on" : "Your profile"}
         >
           <Avatar name={user.name} image={user.image} size={32} variant="solid" />
+          {focusOn && (
+            <span
+              className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--color-nav-rail)] bg-[var(--color-accent)]"
+              title="Focus mode on"
+            >
+              <MoonIcon className="h-2.5 w-2.5 text-white" />
+            </span>
+          )}
         </button>
       </div>
     </aside>

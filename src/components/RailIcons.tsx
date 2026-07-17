@@ -74,6 +74,14 @@ export function ToolsIcon(props: IconProps) {
   );
 }
 
+export function MoonIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M20 13.5A8 8 0 1 1 10.5 4a6.5 6.5 0 0 0 9.5 9.5z" />
+    </Line>
+  );
+}
+
 export function PlusIcon(props: IconProps) {
   return (
     <Line {...props}>
