@@ -9,6 +9,21 @@ import { ForwardDialog } from "@/components/ForwardDialog";
 import { useCustomEmoji } from "@/components/CustomEmojiContext";
 import { Avatar } from "@/components/Avatar";
 import { StatusBadge } from "@/components/StatusBadge";
+import {
+  ThreadIcon,
+  ForwardIcon,
+  ReactionIcon,
+  LaterIcon,
+  KebabIcon,
+  PinIcon,
+  PencilIcon,
+  LinkIcon,
+  CopyIcon,
+  TrashIcon,
+} from "@/components/RailIcons";
+
+// The quick one-click reactions in the hover toolbar (Slack-style).
+const QUICK_REACTIONS = ["👍", "🙏", "🎉"];
 
 // The embedded original shown on a forwarded message.
 function ForwardedEmbed({ forwarded }: { forwarded: NonNullable<ChatMessage["forwarded"]> }) {
@@ -194,6 +209,18 @@ export function MessageRow({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  function copyLink() {
+    navigator.clipboard
+      ?.writeText(`${window.location.origin}/c/${channelId}?message=${message.id}`)
+      .catch(() => {});
+    setMoreOpen(false);
+  }
+  function copyText() {
+    navigator.clipboard?.writeText(message.body).catch(() => {});
+    setMoreOpen(false);
+  }
 
   const isDeleted = !!message.deletedAt;
   const isMine = message.user.id === currentUserId;
@@ -249,7 +276,7 @@ export function MessageRow({
     <li
       id={htmlId}
       onClick={handleRowClick}
-      className={`group flex gap-3 rounded-md px-2 py-1 -mx-2 transition-colors duration-1000 ${
+      className={`group relative flex gap-3 rounded-md px-2 py-1 -mx-2 transition-colors duration-1000 ${
         isHighlighted
           ? "bg-yellow-100"
           : isActiveThread
@@ -294,89 +321,15 @@ export function MessageRow({
             </span>
           )}
           {message.isPinned && !isDeleted && (
-            <span aria-label="Pinned" title="Pinned to channel" className="text-xs">
-              📌
+            <span aria-label="Pinned to channel" title="Pinned to channel" className="text-[var(--color-accent)]">
+              <PinIcon className="h-3.5 w-3.5" />
             </span>
           )}
           {message.savedByMe && !isDeleted && (
-            <span aria-label="Saved for later" title="Saved for later" className="text-xs">
-              🔖
+            <span aria-label="Saved for later" title="Saved for later" className="text-[var(--color-accent)]">
+              <LaterIcon className="h-3.5 w-3.5" />
             </span>
           )}
-          <div className="ml-auto flex shrink-0 items-center gap-1 opacity-0 transition group-hover:opacity-100">
-            {isMine && !isDeleted && !editing && onEdit && (
-              <button
-                onClick={startEdit}
-                className="rounded px-1.5 py-0.5 text-xs text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
-              >
-                Edit
-              </button>
-            )}
-            {isMine && !isDeleted && onDelete && (
-              <button
-                onClick={handleDelete}
-                className="rounded px-1.5 py-0.5 text-xs text-[var(--color-ink-soft)] hover:bg-red-50 hover:text-red-600"
-              >
-                Delete
-              </button>
-            )}
-            {onOpenThread && !isDeleted && (
-              <button
-                onClick={() => onOpenThread(message.id)}
-                className="rounded px-1.5 py-0.5 text-xs text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
-              >
-                Reply in thread
-              </button>
-            )}
-            {!isDeleted && (
-              <button
-                onClick={() => setForwardOpen(true)}
-                className="rounded px-1.5 py-0.5 text-xs text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
-              >
-                Forward
-              </button>
-            )}
-            {onToggleReaction && !isDeleted && (
-              <div className="relative">
-                <button
-                  onClick={() => setPickerOpen((v) => !v)}
-                  className="rounded px-1.5 py-0.5 text-xs text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
-                >
-                  + react
-                </button>
-                {pickerOpen && (
-                  <FullEmojiPicker
-                    onPick={(token) => onToggleReaction(message.id, token)}
-                    onClose={() => setPickerOpen(false)}
-                  />
-                )}
-              </div>
-            )}
-            {onToggleSave && !isDeleted && (
-              <button
-                onClick={() => onToggleSave(message.id)}
-                className={`rounded px-1.5 py-0.5 text-xs hover:bg-[var(--color-accent-soft)] ${
-                  message.savedByMe
-                    ? "text-[var(--color-accent)]"
-                    : "text-[var(--color-ink-soft)] hover:text-[var(--color-accent)]"
-                }`}
-              >
-                {message.savedByMe ? "Saved" : "Save for later"}
-              </button>
-            )}
-            {onTogglePin && !isDeleted && (
-              <button
-                onClick={() => onTogglePin(message.id)}
-                className={`rounded px-1.5 py-0.5 text-xs hover:bg-[var(--color-accent-soft)] ${
-                  message.isPinned
-                    ? "text-[var(--color-accent)]"
-                    : "text-[var(--color-ink-soft)] hover:text-[var(--color-accent)]"
-                }`}
-              >
-                {message.isPinned ? "Unpin" : "Pin"}
-              </button>
-            )}
-          </div>
         </div>
 
         {editing ? (
@@ -497,6 +450,95 @@ export function MessageRow({
           </button>
         )}
       </div>
+      {!isDeleted && !editing && (
+        <div
+          className={`absolute -top-3 right-3 z-10 items-center gap-0.5 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-0.5 shadow-sm ${
+            moreOpen || pickerOpen ? "flex" : "hidden group-hover:flex"
+          }`}
+        >
+          {onToggleReaction && (
+            <>
+              {QUICK_REACTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => onToggleReaction(message.id, emoji)}
+                  title={`React ${emoji}`}
+                  className="flex h-7 w-7 items-center justify-center rounded text-base leading-none hover:bg-[var(--color-accent-soft)]"
+                >
+                  {emoji}
+                </button>
+              ))}
+              <div className="relative">
+                <ToolbarButton onClick={() => setPickerOpen((v) => !v)} label="Find another reaction">
+                  <ReactionIcon className="h-[18px] w-[18px]" />
+                </ToolbarButton>
+                {pickerOpen && (
+                  <FullEmojiPicker
+                    onPick={(token) => onToggleReaction(message.id, token)}
+                    onClose={() => setPickerOpen(false)}
+                  />
+                )}
+              </div>
+            </>
+          )}
+          {onOpenThread && (
+            <ToolbarButton onClick={() => onOpenThread(message.id)} label="Reply in thread">
+              <ThreadIcon className="h-[18px] w-[18px]" />
+            </ToolbarButton>
+          )}
+          <ToolbarButton onClick={() => setForwardOpen(true)} label="Forward message">
+            <ForwardIcon className="h-[18px] w-[18px]" />
+          </ToolbarButton>
+          {onToggleSave && (
+            <ToolbarButton
+              onClick={() => onToggleSave(message.id)}
+              label={message.savedByMe ? "Remove from later" : "Save for later"}
+              active={message.savedByMe}
+            >
+              <LaterIcon className="h-[18px] w-[18px]" />
+            </ToolbarButton>
+          )}
+          <div className="relative">
+            <ToolbarButton onClick={() => setMoreOpen((v) => !v)} label="More actions" active={moreOpen}>
+              <KebabIcon className="h-[18px] w-[18px]" />
+            </ToolbarButton>
+            {moreOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />
+                <div className="absolute right-0 top-full z-50 mt-1 w-52 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-1 text-left shadow-lg">
+                  {isMine && onEdit && (
+                    <MenuItem onClick={() => { setMoreOpen(false); startEdit(); }} icon={<PencilIcon className="h-4 w-4" />}>
+                      Edit message
+                    </MenuItem>
+                  )}
+                  {onTogglePin && (
+                    <MenuItem onClick={() => { setMoreOpen(false); onTogglePin(message.id); }} icon={<PinIcon className="h-4 w-4" />}>
+                      {message.isPinned ? "Unpin from channel" : "Pin to channel"}
+                    </MenuItem>
+                  )}
+                  {onToggleSave && (
+                    <MenuItem onClick={() => { setMoreOpen(false); onToggleSave(message.id); }} icon={<LaterIcon className="h-4 w-4" />}>
+                      {message.savedByMe ? "Remove from later" : "Save for later"}
+                    </MenuItem>
+                  )}
+                  <MenuItem onClick={copyLink} icon={<LinkIcon className="h-4 w-4" />}>
+                    Copy link
+                  </MenuItem>
+                  <MenuItem onClick={copyText} icon={<CopyIcon className="h-4 w-4" />}>
+                    Copy message
+                  </MenuItem>
+                  {isMine && onDelete && (
+                    <MenuItem onClick={() => { setMoreOpen(false); handleDelete(); }} icon={<TrashIcon className="h-4 w-4" />} danger>
+                      Delete message…
+                    </MenuItem>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {forwardOpen && (
         <ForwardDialog
           sourceChannelId={channelId}
@@ -505,5 +547,54 @@ export function MessageRow({
         />
       )}
     </li>
+  );
+}
+
+function ToolbarButton({
+  onClick,
+  label,
+  active,
+  children,
+}: {
+  onClick: () => void;
+  label: string;
+  active?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={`flex h-7 w-7 items-center justify-center rounded hover:bg-[var(--color-accent-soft)] ${
+        active ? "text-[var(--color-accent)]" : "text-[var(--color-ink-soft)] hover:text-[var(--color-accent)]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function MenuItem({
+  onClick,
+  icon,
+  danger,
+  children,
+}: {
+  onClick: () => void;
+  icon: React.ReactNode;
+  danger?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-[var(--color-accent-soft)] ${
+        danger ? "text-red-600 hover:bg-red-50" : "text-[var(--color-ink)]"
+      }`}
+    >
+      <span className={`shrink-0 ${danger ? "" : "text-[var(--color-ink-soft)]"}`}>{icon}</span>
+      {children}
+    </button>
   );
 }

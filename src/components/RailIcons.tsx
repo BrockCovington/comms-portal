@@ -192,6 +192,76 @@ export function ArchiveIcon(props: IconProps) {
   );
 }
 
+// --- Message hover-action icons ---
+
+export function ThreadIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M4 5.5h16v9H9l-4 3.5v-3.5H4z" />
+      <path d="M7.5 8.5h9M7.5 11h5" />
+    </Line>
+  );
+}
+
+export function ForwardIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M13 6l6 5-6 5" />
+      <path d="M19 11H8.5A4.5 4.5 0 0 0 4 15.5V18" />
+    </Line>
+  );
+}
+
+// A smiley with a small "+" — "find another reaction".
+export function ReactionIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M20.5 11.5a8 8 0 1 1-8-8" />
+      <path d="M9 10.5v.5M14.5 10.5v.5" />
+      <path d="M8.8 14a3.2 3.2 0 0 0 5 0" />
+      <path d="M18.5 3.5v3.6M16.7 5.3h3.6" />
+    </Line>
+  );
+}
+
+export function PencilIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M4 20h4L18.5 9.5a2 2 0 0 0-3-3L5 17z" />
+      <path d="M13.5 6.5l3 3" />
+    </Line>
+  );
+}
+
+export function LinkIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M10 13a3 3 0 0 0 4.5.4l2.5-2.5a3 3 0 0 0-4.2-4.2l-1.3 1.2" />
+      <path d="M14 11a3 3 0 0 0-4.5-.4L7 13.1a3 3 0 0 0 4.2 4.2l1.3-1.2" />
+    </Line>
+  );
+}
+
+export function CopyIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <rect x="8" y="8" width="11" height="11" rx="2" />
+      <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+    </Line>
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <Line {...props}>
+      <path d="M4 7h16" />
+      <path d="M9 7V5h6v2" />
+      <path d="M6.5 7l.8 12a1 1 0 0 0 1 1h7.4a1 1 0 0 0 1-1l.8-12" />
+      <path d="M10 11v6M14 11v6" />
+    </Line>
+  );
+}
+
 // Filled dots — reads cleaner than stroked circles at this size.
 export function MoreIcon({ className }: IconProps) {
   return (
