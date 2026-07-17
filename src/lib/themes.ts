@@ -11,12 +11,15 @@ export type ColorMode = (typeof COLOR_MODES)[number];
 // the actual colors live in globals.css under :root[data-theme="<key>"].
 export const COLOR_THEMES = [
   { key: "syndica", name: "Syndica", swatch: "#3675f8" },
-  { key: "midnight", name: "Midnight", swatch: "#0089ff" },
   { key: "azure", name: "Azure", swatch: "#007cff" },
+  { key: "teal", name: "Teal", swatch: "#14b8a6" },
+  { key: "indigo", name: "Indigo", swatch: "#6366f1" },
   { key: "aubergine", name: "Aubergine", swatch: "#b552cc" },
   { key: "forest", name: "Forest", swatch: "#16a06b" },
   { key: "ember", name: "Ember", swatch: "#e8632a" },
   { key: "rose", name: "Rose", swatch: "#e23e6b" },
+  { key: "magenta", name: "Magenta", swatch: "#ff2cc4" },
+  { key: "violet", name: "Violet", swatch: "#7c00dd" },
 ] as const;
 
 export type ColorTheme = (typeof COLOR_THEMES)[number]["key"];

@@ -56,6 +56,10 @@
   --color-sidebar-active: #3675f8;
   --color-accent: #3675f8;
   --color-on-sidebar-dim: #7c86ad;
+  /* Brand pink — only defined in the Syndica scheme, so `var(--color-pink,
+     <fallback>)` picks it up here for certain lettering (wordmark, section
+     headers, timestamps, links, channel title) and falls back everywhere else. */
+  --color-pink: #ff2cc4;
 }
 :root[data-theme="aubergine"] {
   --color-sidebar: #3f0e40;
@@ -85,21 +89,42 @@
   --color-accent: #e23e6b;
   --color-on-sidebar-dim: #b98a97;
 }
-/* Brand-book aligned: Syndica brand dark (#01102b) + logo blue gradient
-   (#0089ff → #007cff), pulled straight from the Syndica mark. */
-:root[data-theme="midnight"] {
-  --color-sidebar: #01102b;
-  --color-nav-rail: #01102b;
-  --color-sidebar-active: #0089ff;
-  --color-accent: #0089ff;
-  --color-on-sidebar-dim: #6a7fa8;
+/* Brand-palette schemes: Syndica pink (#ff2cc4) and purple (#7c00dd). */
+:root[data-theme="magenta"] {
+  --color-sidebar: #2a0b23;
+  --color-nav-rail: #2a0b23;
+  --color-sidebar-active: #ff2cc4;
+  --color-accent: #ff2cc4;
+  --color-on-sidebar-dim: #c08aad;
 }
+:root[data-theme="violet"] {
+  --color-sidebar: #1a0733;
+  --color-nav-rail: #1a0733;
+  --color-sidebar-active: #9436e8;
+  --color-accent: #7c00dd;
+  --color-on-sidebar-dim: #9a7bc0;
+}
+/* Brand-book aligned: Syndica logo blue gradient (#0089ff → #007cff). */
 :root[data-theme="azure"] {
   --color-sidebar: #0a2a5c;
   --color-nav-rail: #0a2a5c;
   --color-sidebar-active: #38a0ff;
   --color-accent: #007cff;
   --color-on-sidebar-dim: #8fa8cf;
+}
+:root[data-theme="teal"] {
+  --color-sidebar: #0c2b2e;
+  --color-nav-rail: #0c2b2e;
+  --color-sidebar-active: #14b8a6;
+  --color-accent: #14b8a6;
+  --color-on-sidebar-dim: #6f9d99;
+}
+:root[data-theme="indigo"] {
+  --color-sidebar: #1e1b4b;
+  --color-nav-rail: #1e1b4b;
+  --color-sidebar-active: #6366f1;
+  --color-accent: #6366f1;
+  --color-on-sidebar-dim: #9a97c9;
 }
 
 html,

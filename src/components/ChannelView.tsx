@@ -206,7 +206,7 @@ export function ChannelView({
           >
             ☰
           </button>
-          <h1 className="text-base font-semibold text-[var(--color-ink)]">
+          <h1 className="text-base font-semibold text-[var(--color-pink,var(--color-ink))]">
             {!isDm && <span className="text-[var(--color-ink-soft)]">#</span>} {channelName}
           </h1>
           <button

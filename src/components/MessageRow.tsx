@@ -50,7 +50,7 @@ function LinkPreviewCard({ preview }: { preview: LinkPreview }) {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="block truncate text-sm font-medium text-[var(--color-accent)] hover:underline"
+          className="block truncate text-sm font-medium text-[var(--color-pink,var(--color-accent))] hover:underline"
         >
           {title ?? url}
         </a>
@@ -269,7 +269,7 @@ export function MessageRow({
             text={message.user.statusText}
             expiresAt={message.user.statusExpiresAt}
           />
-          <time className="text-xs text-[var(--color-ink-soft)]">
+          <time className="text-xs text-[var(--color-pink,var(--color-ink-soft))]">
             {new Date(message.createdAt).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",

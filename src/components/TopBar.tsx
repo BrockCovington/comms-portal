@@ -19,7 +19,7 @@ export function TopBar({ user }: { user: { name: string; image: string | null } 
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/syndica-icon.svg" alt="" className="h-6 w-6" />
         <span className="text-sm font-semibold tracking-tight text-white">
-          Syndica <span className="text-[var(--color-accent)]">Sync</span>
+          Syndica <span className="text-[var(--color-pink,var(--color-accent))]">Sync</span>
         </span>
       </div>
 

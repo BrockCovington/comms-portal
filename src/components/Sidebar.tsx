@@ -504,7 +504,7 @@ function CollapsibleSection({
       <div className="flex items-center justify-between px-3 py-1">
         <button
           onClick={() => setOpenState((v) => !v)}
-          className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-on-sidebar-dim)] hover:text-white"
+          className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-pink,var(--color-on-sidebar-dim))] hover:text-white"
         >
           <span className={`inline-block transition-transform ${openState ? "rotate-90" : ""}`}>›</span>
           {label}
@@ -616,7 +616,7 @@ function SectionGroup({
       <div className="flex items-center justify-between px-3 py-1">
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-on-sidebar-dim)] hover:text-white"
+          className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-pink,var(--color-on-sidebar-dim))] hover:text-white"
         >
           <span className={`inline-block transition-transform ${open ? "rotate-90" : ""}`}>›</span>
           {title}
