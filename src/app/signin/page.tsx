@@ -5,15 +5,13 @@ export default async function SignInPage() {
   const session = await auth();
   if (session) redirect("/c");
 
-  const workspace = process.env.NEXT_PUBLIC_WORKSPACE_NAME ?? "your workspace";
-
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--color-rail)] p-6">
       <div className="w-full max-w-sm rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-8 shadow-sm">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/syndica-logo.svg" alt="Syndica" className="mb-6 h-8 w-auto" />
         <h1 className="text-xl font-semibold text-[var(--color-ink)]">
-          Sign in to {workspace}
+          Sign in to Syndica Sync
         </h1>
         <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
           Use your company Google account. Outside accounts can&apos;t get in.

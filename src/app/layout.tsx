@@ -11,10 +11,9 @@ import {
 } from "@/lib/themes";
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_WORKSPACE_NAME
-    ? `${process.env.NEXT_PUBLIC_WORKSPACE_NAME} — Comms`
-    : "Comms",
-  description: "Internal team communication",
+  title: "Syndica Sync",
+  description: "Syndica Sync — internal team communication",
+  icons: { icon: "/syndica-icon.svg" },
 };
 
 export default async function RootLayout({
