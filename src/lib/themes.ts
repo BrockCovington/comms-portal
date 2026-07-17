@@ -10,7 +10,7 @@ export type ColorMode = (typeof COLOR_MODES)[number];
 // The 5 selectable color schemes. `swatch` is the accent shown in the picker;
 // the actual colors live in globals.css under :root[data-theme="<key>"].
 export const COLOR_THEMES = [
-  { key: "syndica", name: "Syndica", swatch: "#3675f8" },
+  { key: "syndica", name: "Syndica", swatch: "#040e37" },
   { key: "azure", name: "Azure", swatch: "#007cff" },
   { key: "teal", name: "Teal", swatch: "#14b8a6" },
   { key: "indigo", name: "Indigo", swatch: "#6366f1" },

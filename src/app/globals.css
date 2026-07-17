@@ -53,13 +53,25 @@
 :root[data-theme="syndica"] {
   --color-sidebar: #040e37;
   --color-nav-rail: #040e37;
-  --color-sidebar-active: #3675f8;
-  --color-accent: #3675f8;
+  /* Main accent = brand navy. The selected-channel highlight is a lighter
+     navy so it stays visible against the same-navy sidebar. */
+  --color-accent: #040e37;
+  --color-sidebar-active: #2e3d80;
   --color-on-sidebar-dim: #7c86ad;
   /* Brand pink — only defined in the Syndica scheme, so `var(--color-pink,
      <fallback>)` picks it up here for certain lettering (wordmark, section
      headers, timestamps, links, channel title) and falls back everywhere else. */
   --color-pink: #ff2cc4;
+}
+/* Navy accent is too dark to read on the dark canvas, so lift it in dark
+   mode (buttons/links/active states stay legible; the brand stays navy). */
+:root[data-theme="syndica"][data-color-mode="dark"] {
+  --color-accent: #4d63c9;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="syndica"][data-color-mode="system"] {
+    --color-accent: #4d63c9;
+  }
 }
 :root[data-theme="aubergine"] {
   --color-sidebar: #3f0e40;
