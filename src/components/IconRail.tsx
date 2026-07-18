@@ -19,7 +19,6 @@ import {
   UsersIcon,
   ArchiveIcon,
   PlusIcon,
-  MoreIcon,
   MoonIcon,
   PencilIcon,
   HashIcon,
@@ -86,7 +85,7 @@ export function IconRail({
   const router = useRouter();
   const pathname = usePathname();
   const { startOrJoin } = useHuddleControls();
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminTop, setAdminTop] = useState(0);
@@ -233,50 +232,6 @@ export function IconRail({
       <RailLink href="/files" active={pathname === "/files"} icon={<FilesIcon />} label="Files" />
       <RailLink href="/later" active={pathname === "/later"} icon={<LaterIcon />} label="Later" />
 
-      <div className="relative">
-        {moreOpen && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />
-            {/* Fixed, anchored just right of the rail: the rail is a narrow
-                overflow-y-auto column, so an absolute menu centered on it
-                spills off the left edge of the screen and gets clipped. */}
-            <div className="fixed bottom-4 left-[5.5rem] z-50 w-44 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-1 text-left shadow-lg">
-              <button
-                onClick={() => { setMoreOpen(false); setNotifPrefsOpen(true); }}
-                className="block w-full rounded px-2 py-1.5 text-left text-xs text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
-              >
-                Notifications
-              </button>
-              <button
-                onClick={() => { setMoreOpen(false); setAppearanceOpen(true); }}
-                className="block w-full rounded px-2 py-1.5 text-left text-xs text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
-              >
-                Appearance
-              </button>
-              <form action={signOutAction}>
-                <button
-                  type="submit"
-                  className="block w-full rounded px-2 py-1.5 text-left text-xs text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
-                >
-                  Sign out
-                </button>
-              </form>
-            </div>
-          </>
-        )}
-        {notifPrefsOpen && <NotificationPrefsPanel onClose={() => setNotifPrefsOpen(false)} />}
-        {appearanceOpen && <AppearancePanel onClose={() => setAppearanceOpen(false)} />}
-        <button
-          onClick={() => setMoreOpen((v) => !v)}
-          className={railItemClass(moreOpen)}
-          aria-label="More"
-          title="More"
-        >
-          <MoreIcon />
-          <span className="text-[10px] leading-none">More</span>
-        </button>
-      </div>
-
       {role === "ADMIN" && (
         <div className="relative">
           {adminOpen && (
@@ -340,6 +295,46 @@ export function IconRail({
         </button>
 
         <div className="relative">
+          {userMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+              {/* Fixed, anchored just right of the rail: the rail is a narrow
+                  overflow-y-auto column, so an absolute menu centered on it
+                  spills off the left edge of the screen and gets clipped. */}
+              <div className="fixed bottom-4 left-[5.5rem] z-50 w-56 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-1 text-left shadow-lg">
+                <div className="border-b border-[var(--color-line)] px-2 py-2">
+                  <p className="truncate text-sm font-semibold text-[var(--color-ink)]">{user.name}</p>
+                  <p className="truncate text-xs text-[var(--color-ink-soft)]">{user.email}</p>
+                </div>
+                <button
+                  onClick={() => { setUserMenuOpen(false); setProfileOpen(true); }}
+                  className="mt-1 block w-full rounded px-2 py-1.5 text-left text-xs text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
+                >
+                  Profile
+                </button>
+                <button
+                  onClick={() => { setUserMenuOpen(false); setNotifPrefsOpen(true); }}
+                  className="block w-full rounded px-2 py-1.5 text-left text-xs text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
+                >
+                  Notifications
+                </button>
+                <button
+                  onClick={() => { setUserMenuOpen(false); setAppearanceOpen(true); }}
+                  className="block w-full rounded px-2 py-1.5 text-left text-xs text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
+                >
+                  Appearance
+                </button>
+                <form action={signOutAction}>
+                  <button
+                    type="submit"
+                    className="block w-full rounded px-2 py-1.5 text-left text-xs text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
+                  >
+                    Sign out
+                  </button>
+                </form>
+              </div>
+            </>
+          )}
           {profileOpen && (
             <ProfilePanel
               name={user.name}
@@ -348,11 +343,13 @@ export function IconRail({
               onClose={() => setProfileOpen(false)}
             />
           )}
+          {notifPrefsOpen && <NotificationPrefsPanel onClose={() => setNotifPrefsOpen(false)} />}
+          {appearanceOpen && <AppearancePanel onClose={() => setAppearanceOpen(false)} />}
           <button
-            onClick={() => setProfileOpen((v) => !v)}
+            onClick={() => setUserMenuOpen((v) => !v)}
             className="relative rounded-full ring-2 ring-transparent transition hover:ring-white/40"
-            aria-label="Your profile"
-            title={focusOn ? "Your profile — focus mode on" : "Your profile"}
+            aria-label="Your profile and settings"
+            title={focusOn ? "You — focus mode on" : "You"}
           >
             <Avatar name={user.name} image={user.image} size={36} variant="solid" />
             {focusOn && (
