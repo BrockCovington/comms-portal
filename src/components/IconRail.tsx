@@ -15,7 +15,9 @@ import {
   ActivityIcon,
   LaterIcon,
   FilesIcon,
-  ToolsIcon,
+  GearIcon,
+  UsersIcon,
+  ArchiveIcon,
   PlusIcon,
   MoreIcon,
   MoonIcon,
@@ -72,11 +74,13 @@ export function IconRail({
   workspaceName,
   currentUserId,
   user,
+  role,
   signOutAction,
 }: {
   workspaceName: string;
   currentUserId: string;
   user: { name: string; email: string; image: string | null };
+  role: "EMPLOYEE" | "ADMIN";
   signOutAction: () => Promise<void>;
 }) {
   const router = useRouter();
@@ -84,6 +88,8 @@ export function IconRail({
   const { startOrJoin } = useHuddleControls();
   const [moreOpen, setMoreOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminTop, setAdminTop] = useState(0);
   const [notifPrefsOpen, setNotifPrefsOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -271,7 +277,29 @@ export function IconRail({
         </button>
       </div>
 
-      <RailLink href="/admin" active={pathname === "/admin"} icon={<ToolsIcon />} label="Admin" />
+      {role === "ADMIN" && (
+        <div className="relative">
+          {adminOpen && (
+            <AdminToolsMenu
+              top={adminTop}
+              onClose={() => setAdminOpen(false)}
+              onNavigate={(href) => { setAdminOpen(false); router.push(href); }}
+            />
+          )}
+          <button
+            onClick={(e) => {
+              setAdminTop(e.currentTarget.getBoundingClientRect().top);
+              setAdminOpen((v) => !v);
+            }}
+            className={railItemClass((pathname?.startsWith("/admin") ?? false) || adminOpen)}
+            aria-label="Admin"
+            title="Admin"
+          >
+            <GearIcon />
+            <span className="text-[10px] leading-none">Admin</span>
+          </button>
+        </div>
+      )}
 
       {/* Bottom cluster: Create, Focus, and the profile avatar — circular. */}
       <div className="relative mt-auto flex flex-col items-center gap-3 pt-4">
@@ -381,6 +409,44 @@ function CreateRow({
         <span className="block truncate text-xs text-[var(--color-ink-soft)]">{subtitle}</span>
       </span>
     </button>
+  );
+}
+
+// The "Admin Tools" pop-out (admins only), anchored to the right of the rail
+// at the gear button's vertical position.
+function AdminToolsMenu({
+  top,
+  onClose,
+  onNavigate,
+}: {
+  top: number;
+  onClose: () => void;
+  onNavigate: (href: string) => void;
+}) {
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div
+        className="fixed left-[5.5rem] z-50 w-72 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-2 text-[var(--color-ink)] shadow-xl"
+        style={{ top }}
+      >
+        <p className="px-2 py-1 text-sm font-semibold">Admin Tools</p>
+        <CreateRow
+          icon={<UsersIcon className="h-4 w-4" />}
+          color="#3675f8"
+          title="Members & roles"
+          subtitle="Grant or revoke admin access"
+          onClick={() => onNavigate("/admin/users")}
+        />
+        <CreateRow
+          icon={<ArchiveIcon className="h-4 w-4" />}
+          color="#84848a"
+          title="Channels"
+          subtitle="Archive or reopen channels"
+          onClick={() => onNavigate("/admin/channels")}
+        />
+      </div>
+    </>
   );
 }
 

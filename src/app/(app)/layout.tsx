@@ -66,6 +66,7 @@ export default async function AppLayout({
               workspaceName={process.env.NEXT_PUBLIC_WORKSPACE_NAME ?? "Workspace"}
               currentUserId={userId}
               user={user}
+              role={session.user.role}
               signOutAction={handleSignOut}
             />
           }
