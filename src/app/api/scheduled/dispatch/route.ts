@@ -3,8 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { decryptMessage } from "@/lib/crypto";
 import { deliverMessage } from "@/lib/deliver";
 import { computeNextRun } from "@/lib/workflows";
+import { pusherServer, userChannelName } from "@/lib/pusher";
 
 const BATCH = 200;
+const REMINDER_PREVIEW_LENGTH = 80;
 
 // /api/scheduled/dispatch — delivers every scheduled message whose time has
 // come, and fires every recurring Workflow that's due. Runs every minute via
@@ -173,6 +175,87 @@ async function dispatch(request: Request) {
     }
   }
 
+  // --- Reminders -----------------------------------------------------------
+  // Every due "remind me about this message" fires once, materializing a
+  // REMINDER notification (linking back to the message) for its owner. Claiming
+  // via firedAt keeps an overlapping run from double-firing.
+  const dueReminders = await prisma.reminder.findMany({
+    where: { remindAt: { lte: now }, firedAt: null },
+    orderBy: { remindAt: "asc" },
+    take: BATCH,
+    select: { id: true, userId: true, channelId: true, messageId: true },
+  });
+
+  let remindersFired = 0;
+  let remindersFailed = 0;
+
+  for (const rem of dueReminders) {
+    const claim = await prisma.reminder.updateMany({
+      where: { id: rem.id, firedAt: null },
+      data: { firedAt: now },
+    });
+    if (claim.count !== 1) continue; // another run got it
+
+    try {
+      const [channel, membership, message] = await Promise.all([
+        prisma.channel.findUnique({
+          where: { id: rem.channelId },
+          select: { name: true, isDm: true, isPrivate: true },
+        }),
+        prisma.channelMember.findUnique({
+          where: { channelId_userId: { channelId: rem.channelId, userId: rem.userId } },
+          select: { id: true },
+        }),
+        prisma.message.findUnique({
+          where: { id: rem.messageId },
+          select: { body: true, deletedAt: true, parentId: true },
+        }),
+      ]);
+
+      // Skip silently if the message is gone or the user can no longer see the
+      // channel — a reminder linking somewhere they can't open is worse than none.
+      const canAccess = channel && (!(channel.isPrivate || channel.isDm) || membership);
+      if (!channel || !message || message.deletedAt || !canAccess) {
+        remindersFailed++;
+        continue;
+      }
+
+      const notif = await prisma.notification.create({
+        data: {
+          userId: rem.userId,
+          actorId: rem.userId, // self-scheduled
+          type: "REMINDER",
+          channelId: rem.channelId,
+          messageId: rem.messageId,
+          parentId: message.parentId ?? null,
+        },
+        select: { id: true, createdAt: true },
+      });
+
+      const preview = decryptMessage(message.body).slice(0, REMINDER_PREVIEW_LENGTH);
+      await pusherServer
+        .trigger(userChannelName(rem.userId), "notification", {
+          id: notif.id,
+          type: "REMINDER",
+          channelId: rem.channelId,
+          channelName: channel.name,
+          isDm: channel.isDm,
+          messageId: rem.messageId,
+          parentId: message.parentId ?? null,
+          actorId: rem.userId,
+          actorName: "Reminder",
+          preview,
+          createdAt: notif.createdAt,
+          readAt: null,
+        })
+        .catch(() => {});
+      remindersFired++;
+    } catch (err) {
+      console.error("Reminder dispatch failed for", rem.id, err);
+      remindersFailed++;
+    }
+  }
+
   return NextResponse.json({
     delivered,
     failed,
@@ -180,5 +263,8 @@ async function dispatch(request: Request) {
     workflowsFired,
     workflowsFailed,
     workflowsConsidered: dueWorkflows.length,
+    remindersFired,
+    remindersFailed,
+    remindersConsidered: dueReminders.length,
   });
 }

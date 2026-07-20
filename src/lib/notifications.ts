@@ -4,6 +4,11 @@ import type { AppNotification } from "@/hooks/useNotifications";
 // never meant for display — so a DM notification never mentions the
 // channel by name, unlike a mention/reply in a real channel.
 export function describeNotification(n: AppNotification): string {
+  // A reminder is self-scheduled, so it reads as a self-contained phrase (the
+  // UI shows "⏰ Reminder" rather than an actor name in front of it).
+  if (n.type === "REMINDER") {
+    return n.isDm ? "about your conversation" : `about a message in #${n.channelName}`;
+  }
   if (n.isDm) {
     return n.parentId ? "replied in your conversation" : "sent you a message";
   }

@@ -145,6 +145,9 @@ export async function deliverMessage(input: DeliverInput): Promise<{ message: De
   // CHANNEL. Per-recipient prefs (mute, level, keyword, DND) applied after.
   const recipientTypes = new Map<string, NotificationType>();
   const PRIORITY: Record<NotificationType, number> = {
+    // REMINDER isn't produced by this live fan-out (the dispatcher creates it
+    // directly), but the map must be exhaustive over NotificationType.
+    REMINDER: 6,
     MENTION: 5,
     KEYWORD: 4,
     THREAD_REPLY: 3,

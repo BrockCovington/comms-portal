@@ -64,7 +64,7 @@ export function ActivityListColumn({
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs">
-                    <span className="font-semibold">{n.actorName}</span> {describeNotification(n)}
+                    <span className="font-semibold">{n.type === "REMINDER" ? "⏰ Reminder" : n.actorName}</span> {describeNotification(n)}
                   </p>
                   {n.preview && (
                     <p className="mt-0.5 truncate text-[10px] text-[var(--color-on-sidebar-dim)]">

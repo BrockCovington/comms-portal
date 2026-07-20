@@ -71,7 +71,7 @@ export function NotificationToasts({ currentUserId }: { currentUserId: string })
           className="rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-3 text-left shadow-lg hover:bg-[var(--color-accent-soft)]"
         >
           <p className="text-xs text-[var(--color-ink)]">
-            <span className="font-semibold">{n.actorName}</span> {describeNotification(n)}
+            <span className="font-semibold">{n.type === "REMINDER" ? "⏰ Reminder" : n.actorName}</span> {describeNotification(n)}
           </p>
           {n.preview && (
             <p className="mt-0.5 truncate text-sm text-[var(--color-ink-soft)]">{n.preview}</p>

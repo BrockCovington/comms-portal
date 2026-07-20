@@ -73,6 +73,7 @@ model User {
   createdLists            List[]             @relation("CreatedLists")
   assignedListItems       ListItem[]         @relation("AssignedItems")
   createdWorkflows        Workflow[]         @relation("CreatedWorkflows")
+  reminders               Reminder[]
 }
 
 model Account {
@@ -138,6 +139,7 @@ model Channel {
   preferences   ChannelPreference[]
   scheduledMessages ScheduledMessage[]
   workflows     Workflow[]
+  reminders     Reminder[]
 
   @@index([isPrivate, isDm])
 }
@@ -177,6 +179,7 @@ model Message {
   reactions     Reaction[]
   attachments   Attachment[]
   notifications Notification[]
+  reminders     Reminder[]
   savedBy       SavedMessage[]
   linkPreview   LinkPreview?
   pin           PinnedMessage?
@@ -329,6 +332,28 @@ enum NotificationType {
   THREAD_REPLY
   KEYWORD // a word from the recipient's keyword-alert list appeared
   CHANNEL // any message, for a channel the recipient set to "All"
+  REMINDER // a self-scheduled "remind me about this message" (see Reminder)
+}
+
+// A "remind me about this message" — self-scheduled by a user. The dispatcher
+// (POST /api/scheduled/dispatch) fires due reminders, materializing a
+// REMINDER Notification that links back to the message. Cascades away if the
+// message is deleted so we never remind about something that's gone.
+model Reminder {
+  id         String    @id @default(cuid())
+  userId     String
+  channelId  String
+  messageId  String
+  remindAt   DateTime
+  createdAt  DateTime  @default(now())
+  firedAt    DateTime?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([firedAt, remindAt])
+  @@index([userId])
 }
 
 model Notification {

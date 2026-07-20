@@ -20,6 +20,7 @@ import {
   LinkIcon,
   CopyIcon,
   TrashIcon,
+  ClockIcon,
 } from "@/components/RailIcons";
 
 // The quick one-click reactions in the hover toolbar (Slack-style).
@@ -210,6 +211,42 @@ export function MessageRow({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [remindOpen, setRemindOpen] = useState(false);
+  const [remindNote, setRemindNote] = useState<string | null>(null);
+
+  function closeMore() {
+    setMoreOpen(false);
+    setRemindOpen(false);
+  }
+
+  async function setReminder(deltaMs: number, label: string) {
+    closeMore();
+    setActionError(null);
+    try {
+      const res = await fetch("/api/reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId: message.id, remindAt: new Date(Date.now() + deltaMs).toISOString() }),
+      });
+      if (res.ok) {
+        setRemindNote(`⏰ Reminder set ${label}`);
+        setTimeout(() => setRemindNote(null), 4000);
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setActionError(d.error ?? "Couldn't set reminder");
+      }
+    } catch {
+      setActionError("Couldn't set reminder");
+    }
+  }
+
+  // Milliseconds from now to the next local 9:00 AM (tomorrow).
+  function untilTomorrow9(): number {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(9, 0, 0, 0);
+    return d.getTime() - Date.now();
+  }
 
   function copyLink() {
     navigator.clipboard
@@ -410,6 +447,7 @@ export function MessageRow({
         )}
 
         {actionError && <p className="mt-1 text-xs text-red-600">{actionError}</p>}
+        {remindNote && <p className="mt-1 text-xs text-[var(--color-accent)]">{remindNote}</p>}
 
         {!isDeleted && (message.reactions?.length ?? 0) > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
@@ -504,33 +542,61 @@ export function MessageRow({
             </ToolbarButton>
             {moreOpen && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />
+                <div className="fixed inset-0 z-40" onClick={closeMore} />
                 <div className="absolute right-0 top-full z-50 mt-1 w-52 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-1 text-left shadow-lg">
-                  {isMine && onEdit && (
-                    <MenuItem onClick={() => { setMoreOpen(false); startEdit(); }} icon={<PencilIcon className="h-4 w-4" />}>
-                      Edit message
-                    </MenuItem>
-                  )}
-                  {onTogglePin && (
-                    <MenuItem onClick={() => { setMoreOpen(false); onTogglePin(message.id); }} icon={<PinIcon className="h-4 w-4" />}>
-                      {message.isPinned ? "Unpin from channel" : "Pin to channel"}
-                    </MenuItem>
-                  )}
-                  {onToggleSave && (
-                    <MenuItem onClick={() => { setMoreOpen(false); onToggleSave(message.id); }} icon={<LaterIcon className="h-4 w-4" />}>
-                      {message.savedByMe ? "Remove from later" : "Save for later"}
-                    </MenuItem>
-                  )}
-                  <MenuItem onClick={copyLink} icon={<LinkIcon className="h-4 w-4" />}>
-                    Copy link
-                  </MenuItem>
-                  <MenuItem onClick={copyText} icon={<CopyIcon className="h-4 w-4" />}>
-                    Copy message
-                  </MenuItem>
-                  {isMine && onDelete && (
-                    <MenuItem onClick={() => { setMoreOpen(false); handleDelete(); }} icon={<TrashIcon className="h-4 w-4" />} danger>
-                      Delete message…
-                    </MenuItem>
+                  {remindOpen ? (
+                    <>
+                      <button
+                        onClick={() => setRemindOpen(false)}
+                        className="mb-0.5 flex w-full items-center gap-1 rounded px-2 py-1.5 text-left text-xs font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)]"
+                      >
+                        ‹ Remind me about this
+                      </button>
+                      <MenuItem onClick={() => setReminder(20 * 60_000, "in 20 minutes")} icon={<ClockIcon className="h-4 w-4" />}>
+                        In 20 minutes
+                      </MenuItem>
+                      <MenuItem onClick={() => setReminder(60 * 60_000, "in 1 hour")} icon={<ClockIcon className="h-4 w-4" />}>
+                        In 1 hour
+                      </MenuItem>
+                      <MenuItem onClick={() => setReminder(3 * 60 * 60_000, "in 3 hours")} icon={<ClockIcon className="h-4 w-4" />}>
+                        In 3 hours
+                      </MenuItem>
+                      <MenuItem onClick={() => setReminder(untilTomorrow9(), "for tomorrow at 9:00 AM")} icon={<ClockIcon className="h-4 w-4" />}>
+                        Tomorrow
+                      </MenuItem>
+                    </>
+                  ) : (
+                    <>
+                      {isMine && onEdit && (
+                        <MenuItem onClick={() => { closeMore(); startEdit(); }} icon={<PencilIcon className="h-4 w-4" />}>
+                          Edit message
+                        </MenuItem>
+                      )}
+                      {onTogglePin && (
+                        <MenuItem onClick={() => { closeMore(); onTogglePin(message.id); }} icon={<PinIcon className="h-4 w-4" />}>
+                          {message.isPinned ? "Unpin from channel" : "Pin to channel"}
+                        </MenuItem>
+                      )}
+                      {onToggleSave && (
+                        <MenuItem onClick={() => { closeMore(); onToggleSave(message.id); }} icon={<LaterIcon className="h-4 w-4" />}>
+                          {message.savedByMe ? "Remove from later" : "Save for later"}
+                        </MenuItem>
+                      )}
+                      <MenuItem onClick={() => setRemindOpen(true)} icon={<ClockIcon className="h-4 w-4" />}>
+                        Remind me about this
+                      </MenuItem>
+                      <MenuItem onClick={copyLink} icon={<LinkIcon className="h-4 w-4" />}>
+                        Copy link
+                      </MenuItem>
+                      <MenuItem onClick={copyText} icon={<CopyIcon className="h-4 w-4" />}>
+                        Copy message
+                      </MenuItem>
+                      {isMine && onDelete && (
+                        <MenuItem onClick={() => { closeMore(); handleDelete(); }} icon={<TrashIcon className="h-4 w-4" />} danger>
+                          Delete message…
+                        </MenuItem>
+                      )}
+                    </>
                   )}
                 </div>
               </>
