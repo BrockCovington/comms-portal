@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { AppShell } from "@/components/AppShell";
 import { TopBar } from "@/components/TopBar";
 import { IconRail } from "@/components/IconRail";
+import { QuickSwitcher } from "@/components/QuickSwitcher";
 import { NotificationToasts } from "@/components/NotificationToasts";
 import { IncomingHuddle } from "@/components/IncomingHuddle";
 import { HuddleProvider } from "@/components/HuddleProvider";
@@ -85,6 +86,7 @@ export default async function AppLayout({
         >
           {children}
         </AppShell>
+        <QuickSwitcher />
         <NotificationToasts currentUserId={userId} />
         <IncomingHuddle currentUserId={userId} />
       </HuddleProvider>
