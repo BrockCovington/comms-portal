@@ -9,6 +9,7 @@ import { ForwardDialog } from "@/components/ForwardDialog";
 import { useCustomEmoji } from "@/components/CustomEmojiContext";
 import { Avatar } from "@/components/Avatar";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ProfileCard } from "@/components/ProfileCard";
 import {
   ThreadIcon,
   ForwardIcon,
@@ -225,6 +226,17 @@ export function MessageRow({
   const [moreOpen, setMoreOpen] = useState(false);
   const [remindOpen, setRemindOpen] = useState(false);
   const [remindNote, setRemindNote] = useState<string | null>(null);
+  const [cardAnchor, setCardAnchor] = useState<{ x: number; y: number } | null>(null);
+
+  // Open the profile card near the clicked name/avatar, clamped on-screen.
+  function openCard(e: React.MouseEvent) {
+    e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    setCardAnchor({
+      x: Math.max(8, Math.min(r.left, window.innerWidth - 272)),
+      y: Math.max(8, Math.min(r.bottom + 4, window.innerHeight - 180)),
+    });
+  }
 
   function closeMore() {
     setMoreOpen(false);
@@ -333,13 +345,18 @@ export function MessageRow({
             : ""
       } ${rowOpensThread ? "cursor-pointer" : ""}`}
     >
-      <Avatar name={message.user.name} image={message.user.image} size={36} shape="square" />
+      <button onClick={openCard} className="shrink-0 rounded-md" aria-label={`${message.user.name ?? "User"} profile`}>
+        <Avatar name={message.user.name} image={message.user.image} size={36} shape="square" />
+      </button>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-semibold text-[var(--color-ink)]">
+          <button
+            onClick={openCard}
+            className="text-sm font-semibold text-[var(--color-ink)] hover:underline"
+          >
             {isMine ? "You" : message.user.name ?? "Unknown"}
-          </span>
+          </button>
           <StatusBadge
             emoji={message.user.statusEmoji}
             text={message.user.statusText}
@@ -629,6 +646,16 @@ export function MessageRow({
           sourceChannelId={channelId}
           messageId={message.id}
           onClose={() => setForwardOpen(false)}
+        />
+      )}
+
+      {cardAnchor && (
+        <ProfileCard
+          user={message.user}
+          currentUserId={currentUserId}
+          x={cardAnchor.x}
+          y={cardAnchor.y}
+          onClose={() => setCardAnchor(null)}
         />
       )}
     </li>
