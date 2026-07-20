@@ -69,6 +69,7 @@ export function ChannelView({
     hasMore,
     error,
     readReceipts,
+    firstUnreadAt,
     sendMessage,
     editMessage,
     deleteMessage,
@@ -410,6 +411,7 @@ export function ChannelView({
               onTogglePin={togglePin}
               highlightMessageId={rootHighlightId}
               seenAt={seenAt}
+              firstUnreadAt={firstUnreadAt}
             />
 
             {error && (

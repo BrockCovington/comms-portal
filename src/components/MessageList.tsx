@@ -22,6 +22,7 @@ export function MessageList({
   onTogglePin,
   highlightMessageId,
   seenAt,
+  firstUnreadAt,
 }: {
   channelId: string;
   messages: ChatMessage[];
@@ -42,6 +43,9 @@ export function MessageList({
   // DM read receipts: the other person's latest read time (ISO). A single
   // "Seen" is shown under the most recent of my messages at or before it.
   seenAt?: string | null;
+  // The read boundary from before this visit (ISO). A "New messages" divider is
+  // drawn above the first message after it that isn't the current user's own.
+  firstUnreadAt?: string | null;
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -170,6 +174,21 @@ export function MessageList({
     }
   }
 
+  // Anchor the "New messages" divider above the first message after the read
+  // boundary that isn't my own (my own messages never count as unread). The
+  // boundary is frozen at channel-open, so the divider stays put as new
+  // messages stream in below it.
+  let firstUnreadId: string | null = null;
+  if (firstUnreadAt) {
+    const boundary = new Date(firstUnreadAt).getTime();
+    for (const m of messages) {
+      if (m.user.id !== currentUserId && !m.deletedAt && new Date(m.createdAt).getTime() > boundary) {
+        firstUnreadId = m.id;
+        break;
+      }
+    }
+  }
+
   return (
     <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-5 py-4">
       <div ref={topSentinelRef} />
@@ -181,6 +200,12 @@ export function MessageList({
       <ul className="space-y-4">
         {messages.map((m) => (
           <Fragment key={m.id}>
+            {m.id === firstUnreadId && (
+              <li className="my-1 flex items-center gap-2 text-[11px] font-semibold text-red-500" aria-label="New messages">
+                New messages
+                <span className="h-px flex-1 bg-red-400/50" />
+              </li>
+            )}
             <MessageRow
               channelId={channelId}
               message={m}

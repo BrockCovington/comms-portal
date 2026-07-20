@@ -88,6 +88,12 @@ export function useMessages(
   // Read receipts (DMs): other members' last-read timestamps (ISO), keyed by
   // userId. Drives the "Seen" indicator. Never includes the current user.
   const [readReceipts, setReadReceipts] = useState<Record<string, string>>({});
+  // The read boundary from *before* this visit (ISO), captured once on the
+  // first load of this channel — before markChannelRead advances it — so the
+  // "New messages" divider stays anchored where you left off. Null = never read
+  // (no divider) or no unread.
+  const [firstUnreadAt, setFirstUnreadAt] = useState<string | null>(null);
+  const boundaryChannelRef = useRef<string | null>(null);
 
   const activeThreadIdRef = useRef(activeThreadId);
   useEffect(() => {
@@ -107,6 +113,12 @@ export function useMessages(
       const data = await res.json();
       setMessages(data.messages as ChatMessage[]);
       setHasMore(!!data.hasMore);
+      // Freeze the unread boundary from the first load of this channel; later
+      // refreshes (reconnect) keep the original so the divider doesn't jump.
+      if (boundaryChannelRef.current !== channelId) {
+        boundaryChannelRef.current = channelId;
+        setFirstUnreadAt((data.currentUserLastReadAt as string | null) ?? null);
+      }
       const receipts: Record<string, string> = {};
       for (const r of (data.readReceipts ?? []) as { userId: string; lastReadAt: string }[]) {
         receipts[r.userId] = r.lastReadAt;
@@ -122,8 +134,9 @@ export function useMessages(
 
   useEffect(() => {
     setLoading(true);
-    refresh();
-    markChannelRead(channelId);
+    // Load first (which captures the prior read boundary), THEN mark read — so
+    // the GET reads lastReadAt before this POST advances it to now.
+    refresh().then(() => markChannelRead(channelId));
 
     const channelName = pusherChannelName(channelId);
     const channel = subscribeChannel(channelName);
@@ -370,6 +383,7 @@ export function useMessages(
     hasMore,
     error,
     readReceipts,
+    firstUnreadAt,
     sendMessage,
     editMessage,
     deleteMessage,

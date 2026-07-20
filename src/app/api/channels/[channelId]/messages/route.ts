@@ -166,11 +166,23 @@ export async function GET(request: Request, { params }: RouteContext) {
       ).map((r) => ({ userId: r.userId, lastReadAt: r.lastReadAt.toISOString() }))
     : [];
 
+  // The current user's own last-read time for this channel — used once, on the
+  // initial load, to anchor the "New messages" divider at the boundary from
+  // before this visit marks the channel read. Skipped when paginating older
+  // history (`before`), which never crosses the boundary.
+  const currentUserRead = beforeId
+    ? null
+    : await prisma.channelRead.findUnique({
+        where: { channelId_userId: { channelId, userId: userId! } },
+        select: { lastReadAt: true },
+      });
+
   return NextResponse.json({
     messages,
     hasMore,
     nextCursor: hasMore ? messages[0].id : null,
     readReceipts,
+    currentUserLastReadAt: currentUserRead?.lastReadAt.toISOString() ?? null,
   });
 }
 
