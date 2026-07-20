@@ -7,6 +7,7 @@ import { checkMessageRateLimit } from "@/lib/ratelimit";
 import { decryptLinkPreview } from "@/lib/unfurl";
 import { decryptForwarded } from "@/lib/forward";
 import { deliverMessage } from "@/lib/deliver";
+import { buildReactionSummaries } from "@/lib/reactions";
 
 type RouteContext = { params: Promise<{ channelId: string }> };
 
@@ -80,7 +81,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     ? await Promise.all([
         prisma.reaction.findMany({
           where: { messageId: { in: ids } },
-          select: { messageId: true, emoji: true, userId: true },
+          select: { messageId: true, emoji: true, userId: true, user: { select: { name: true, email: true } } },
         }),
         prisma.attachment.findMany({
           where: { messageId: { in: ids } },
@@ -112,18 +113,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   const forwardedByMessage = new Map(
     forwardedRows.map((f) => [f.messageId, decryptForwarded(f)])
   );
-  const reactionsByMessage = new Map<string, { emoji: string; count: number; mine: boolean }[]>();
-  for (const r of reactionRows) {
-    const list = reactionsByMessage.get(r.messageId) ?? [];
-    const entry = list.find((e) => e.emoji === r.emoji);
-    if (entry) {
-      entry.count += 1;
-      if (r.userId === userId) entry.mine = true;
-    } else {
-      list.push({ emoji: r.emoji, count: 1, mine: r.userId === userId });
-    }
-    reactionsByMessage.set(r.messageId, list);
-  }
+  const reactionsByMessage = buildReactionSummaries(reactionRows, userId);
   const attachmentsByMessage = new Map<
     string,
     { id: string; fileName: string; mimeType: string; size: number }[]

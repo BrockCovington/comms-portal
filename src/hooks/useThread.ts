@@ -97,6 +97,7 @@ export function useThread(channelId: string, parentId: string | null, currentUse
       emoji: string;
       userId: string;
       action: "add" | "remove";
+      name?: string;
     }) => {
       setParent((prev) =>
         prev && prev.id === payload.messageId

@@ -4,6 +4,7 @@ import { getCurrentUserId, checkChannelAccess } from "@/lib/authz";
 import { decryptMessage } from "@/lib/crypto";
 import { decryptLinkPreview } from "@/lib/unfurl";
 import { decryptForwarded } from "@/lib/forward";
+import { buildReactionSummaries } from "@/lib/reactions";
 
 type RouteContext = { params: Promise<{ channelId: string; messageId: string }> };
 
@@ -20,25 +21,6 @@ const MESSAGE_SELECT = {
 
 function renderBody<T extends { body: string; deletedAt: Date | null }>(m: T) {
   return { ...m, body: m.deletedAt ? "" : decryptMessage(m.body) };
-}
-
-function groupReactions(
-  rows: { messageId: string; emoji: string; userId: string }[],
-  currentUserId: string
-): Map<string, { emoji: string; count: number; mine: boolean }[]> {
-  const byMessage = new Map<string, { emoji: string; count: number; mine: boolean }[]>();
-  for (const r of rows) {
-    const list = byMessage.get(r.messageId) ?? [];
-    const entry = list.find((e) => e.emoji === r.emoji);
-    if (entry) {
-      entry.count += 1;
-      if (r.userId === currentUserId) entry.mine = true;
-    } else {
-      list.push({ emoji: r.emoji, count: 1, mine: r.userId === currentUserId });
-    }
-    byMessage.set(r.messageId, list);
-  }
-  return byMessage;
 }
 
 // GET /api/channels/:channelId/messages/:messageId/thread — a root message
@@ -80,7 +62,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     await Promise.all([
       prisma.reaction.findMany({
         where: { messageId: { in: idsInView } },
-        select: { messageId: true, emoji: true, userId: true },
+        select: { messageId: true, emoji: true, userId: true, user: { select: { name: true, email: true } } },
       }),
       prisma.attachment.findMany({
         where: { messageId: { in: idsInView } },
@@ -111,7 +93,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   const forwardedByMessage = new Map(
     forwardedRows.map((f) => [f.messageId, decryptForwarded(f)])
   );
-  const reactionsByMessage = groupReactions(reactionRows, userId!);
+  const reactionsByMessage = buildReactionSummaries(reactionRows, userId!);
   const attachmentsByMessage = new Map<
     string,
     { id: string; fileName: string; mimeType: string; size: number }[]

@@ -54,6 +54,10 @@ export async function POST(request: Request, { params }: RouteContext) {
     await prisma.reaction.create({ data: { messageId, userId: userId!, emoji } });
   }
 
+  // The reactor's display name rides along so every viewer's "who reacted"
+  // tooltip stays current without a re-fetch.
+  const actor = await prisma.user.findUnique({ where: { id: userId! }, select: { name: true, email: true } });
+
   try {
     await pusherServer.trigger(pusherChannelName(channelId), "reaction-updated", {
       messageId,
@@ -61,6 +65,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       emoji,
       userId,
       action,
+      name: actor?.name ?? actor?.email ?? "Someone",
     });
   } catch (err) {
     console.error("Pusher broadcast failed:", err);

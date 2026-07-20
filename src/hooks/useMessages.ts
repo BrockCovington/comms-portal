@@ -187,6 +187,7 @@ export function useMessages(
       emoji: string;
       userId: string;
       action: "add" | "remove";
+      name?: string;
     }) => {
       setMessages((prev) =>
         prev.map((m) =>

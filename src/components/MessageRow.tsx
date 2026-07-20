@@ -26,6 +26,18 @@ import {
 // The quick one-click reactions in the hover toolbar (Slack-style).
 const QUICK_REACTIONS = ["👍", "🙏", "🎉"];
 
+// "Alice", "Alice and Bob", "Alice, Bob and Carol", "Alice, Bob, Carol, Dan,
+// Eve and 3 others" — the who-reacted tooltip text.
+function formatReactors(names: string[]): string {
+  const MAX = 5;
+  if (names.length === 1) return names[0];
+  if (names.length <= MAX) {
+    return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  }
+  const extra = names.length - MAX;
+  return `${names.slice(0, MAX).join(", ")} and ${extra} ${extra === 1 ? "other" : "others"}`;
+}
+
 // The embedded original shown on a forwarded message.
 function ForwardedEmbed({ forwarded }: { forwarded: NonNullable<ChatMessage["forwarded"]> }) {
   return (
@@ -452,19 +464,26 @@ export function MessageRow({
         {!isDeleted && (message.reactions?.length ?? 0) > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
             {message.reactions!.map((r) => (
-              <button
-                key={r.emoji}
-                onClick={() => onToggleReaction?.(message.id, r.emoji)}
-                disabled={!onToggleReaction}
-                className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs ${
-                  r.mine
-                    ? "border-[var(--color-accent)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]"
-                    : "border-[var(--color-line)] text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)]"
-                }`}
-              >
-                <ReactionToken token={r.emoji} />
-                <span>{r.count}</span>
-              </button>
+              <div key={r.emoji} className="group/rx relative">
+                <button
+                  onClick={() => onToggleReaction?.(message.id, r.emoji)}
+                  disabled={!onToggleReaction}
+                  className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs ${
+                    r.mine
+                      ? "border-[var(--color-accent)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]"
+                      : "border-[var(--color-line)] text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)]"
+                  }`}
+                >
+                  <ReactionToken token={r.emoji} />
+                  <span>{r.count}</span>
+                </button>
+                {(r.names?.length ?? 0) > 0 && (
+                  <div className="pointer-events-none absolute bottom-full left-0 z-50 mb-1.5 hidden w-max max-w-[240px] rounded-md bg-[var(--color-ink)] px-2 py-1 text-left text-[11px] leading-snug text-[var(--color-canvas)] shadow-lg group-hover/rx:block">
+                    <span className="font-medium">{formatReactors(r.names)}</span>
+                    <span className="opacity-80"> reacted</span>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}
