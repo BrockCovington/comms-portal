@@ -9,6 +9,14 @@ import { z } from "zod";
 const CUSTOM_SHORTCODE = /^:[a-z0-9_-]{2,32}:$/;
 const NON_EMOJI_CHARS = /[a-zA-Z0-9\s]/;
 
+// A mention target is either a real user id (cuid) or a broadcast token
+// (@channel / @here / @everyone). The server expands the tokens to member ids
+// at fan-out time (see src/lib/deliver.ts).
+const mentionTarget = z.union([
+  z.string().cuid(),
+  z.enum(["@channel", "@here", "@everyone"]),
+]);
+
 export const createChannelSchema = z.object({
   name: z
     .string()
@@ -30,7 +38,7 @@ export const postMessageSchema = z
     attachmentIds: z.array(z.string().cuid()).max(5, "Up to 5 files per message").optional(),
     // Client-computed (see MessageComposer's use of splitMentions), server
     // re-validates against real channel membership before notifying anyone.
-    mentionedUserIds: z.array(z.string().cuid()).max(20).optional(),
+    mentionedUserIds: z.array(mentionTarget).max(25).optional(),
   })
   .refine((data) => !!data.body?.length || !!data.attachmentIds?.length, {
     message: "Message can't be empty",
@@ -42,7 +50,7 @@ export const scheduleMessageSchema = z
     sendAt: z.string().datetime("Invalid send time"),
     parentId: z.string().cuid().optional(),
     attachmentIds: z.array(z.string().cuid()).max(5, "Up to 5 files per message").optional(),
-    mentionedUserIds: z.array(z.string().cuid()).max(20).optional(),
+    mentionedUserIds: z.array(mentionTarget).max(25).optional(),
   })
   .refine((data) => !!data.body?.length || !!data.attachmentIds?.length, {
     message: "Message can't be empty",

@@ -1,13 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { splitMentions } from "@/lib/mentions";
+import { splitMentions, extractBroadcastMentions } from "@/lib/mentions";
 import { FullEmojiPicker } from "@/components/FullEmojiPicker";
 import { Avatar } from "@/components/Avatar";
 
 const DRAFT_SAVE_DEBOUNCE_MS = 1000;
 
 type ComposerMember = { id: string; name: string | null; email: string; image: string | null };
+
+// Broadcast mentions offered in the @-autocomplete alongside people.
+const BROADCASTS: { token: string; label: string; desc: string }[] = [
+  { token: "@channel", label: "channel", desc: "Notify everyone in this channel" },
+  { token: "@here", label: "here", desc: "Notify everyone currently active here" },
+  { token: "@everyone", label: "everyone", desc: "Notify everyone in this channel" },
+];
+
+type Suggestion =
+  | { kind: "broadcast"; token: string; label: string; desc: string }
+  | { kind: "member"; member: ComposerMember };
 
 // Matches a trailing "@query" at the cursor, up to two words — this app's
 // display names are Google-OAuth "First Last", so two words covers a full
@@ -165,27 +176,37 @@ export function MessageComposer({
     files.slice(0, room).forEach(uploadFile);
   }
 
-  const candidates = mention
-    ? (members ?? []).filter((m) => {
-        const label = (m.name ?? m.email).toLowerCase();
-        return label.includes(mention.query.toLowerCase());
-      })
+  const q = (mention?.query ?? "").toLowerCase();
+  const suggestions: Suggestion[] = mention
+    ? [
+        ...BROADCASTS.filter((b) => q === "" || b.label.startsWith(q)).map((b) => ({
+          kind: "broadcast" as const,
+          ...b,
+        })),
+        ...(members ?? [])
+          .filter((m) => (m.name ?? m.email).toLowerCase().includes(q))
+          .map((m) => ({ kind: "member" as const, member: m })),
+      ]
     : [];
-  const mentionOpen = mention !== null && candidates.length > 0;
+  const mentionOpen = mention !== null && suggestions.length > 0;
 
   // Derived from the final text at send time (not tracked at insertion)
   // so editing or deleting an inserted "@Name" before sending is handled
   // for free — reuses the same member-name matching MessageRow already
   // uses to render mentions, just mapped back to ids here.
   function computeMentionedUserIds(body: string): string[] | undefined {
-    if (!members || members.length === 0) return undefined;
-    const nameToId = new Map(members.map((m) => [m.name ?? m.email, m.id]));
-    const ids = new Set(
+    const ids = new Set<string>();
+    if (members && members.length > 0) {
+      const nameToId = new Map(members.map((m) => [m.name ?? m.email, m.id]));
       splitMentions(body, members.map((m) => m.name ?? m.email))
         .filter((f) => f.isMention)
         .map((f) => nameToId.get(f.text.slice(1))) // strip the leading "@"
         .filter((id): id is string => !!id)
-    );
+        .forEach((id) => ids.add(id));
+    }
+    // @channel / @here / @everyone ride along as literal tokens; the server
+    // expands them to member ids at fan-out time.
+    extractBroadcastMentions(body).forEach((t) => ids.add(t));
     return ids.size ? [...ids] : undefined;
   }
 
@@ -260,14 +281,15 @@ export function MessageComposer({
     }
   }
 
-  function selectMention(member: ComposerMember) {
-    if (!mention) return;
-    const name = member.name ?? member.email;
+  function selectSuggestion(s: Suggestion | undefined) {
+    if (!s || !mention) return;
+    const name = s.kind === "broadcast" ? s.label : s.member.name ?? s.member.email;
     const cursor = textareaRef.current?.selectionStart ?? value.length;
     const before = value.slice(0, mention.start);
     const after = value.slice(cursor);
     const newValue = `${before}@${name} ${after}`;
     setValue(newValue);
+    saveDraftDebounced(newValue);
     setMention(null);
     const pos = before.length + name.length + 2; // "@" + name + trailing space
     requestAnimationFrame(() => {
@@ -296,17 +318,17 @@ export function MessageComposer({
     if (mentionOpen) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setHighlightIndex((i) => (i + 1) % candidates.length);
+        setHighlightIndex((i) => (i + 1) % suggestions.length);
         return;
       }
       if (e.key === "ArrowUp") {
         e.preventDefault();
-        setHighlightIndex((i) => (i - 1 + candidates.length) % candidates.length);
+        setHighlightIndex((i) => (i - 1 + suggestions.length) % suggestions.length);
         return;
       }
       if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
-        selectMention(candidates[highlightIndex]);
+        selectSuggestion(suggestions[highlightIndex]);
         return;
       }
       if (e.key === "Escape") {
@@ -353,19 +375,31 @@ export function MessageComposer({
       <div className="relative rounded-lg border border-[var(--color-line)] focus-within:border-[var(--color-accent)]">
         {mentionOpen && (
           <div className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-40 overflow-y-auto rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] shadow-lg">
-            {candidates.map((m, i) => (
+            {suggestions.map((s, i) => (
               <button
-                key={m.id}
+                key={s.kind === "broadcast" ? s.token : s.member.id}
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  selectMention(m);
+                  selectSuggestion(s);
                 }}
                 className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${
                   i === highlightIndex ? "bg-[var(--color-accent-soft)]" : "hover:bg-[var(--color-accent-soft)]"
                 }`}
               >
-                <Avatar name={m.name ?? m.email} image={m.image} size={20} />
-                {m.name ?? m.email}
+                {s.kind === "broadcast" ? (
+                  <>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[var(--color-accent-soft)] text-[11px] font-semibold text-[var(--color-accent)]">
+                      @
+                    </span>
+                    <span className="font-medium text-[var(--color-ink)]">{s.token}</span>
+                    <span className="truncate text-xs text-[var(--color-ink-soft)]">{s.desc}</span>
+                  </>
+                ) : (
+                  <>
+                    <Avatar name={s.member.name ?? s.member.email} image={s.member.image} size={20} />
+                    <span className="text-[var(--color-ink)]">{s.member.name ?? s.member.email}</span>
+                  </>
+                )}
               </button>
             ))}
           </div>

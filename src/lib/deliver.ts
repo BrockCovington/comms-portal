@@ -15,6 +15,23 @@ import type { NotificationType } from "@prisma/client";
 
 const NOTIFICATION_PREVIEW_LENGTH = 80;
 
+// The channel members currently connected to the channel's Pusher presence
+// channel — i.e. who's actually "here" right now — for expanding an @here
+// mention. Returns null (not an empty list) when the lookup is unavailable, so
+// the caller can distinguish "nobody is here" from "couldn't tell" and fall
+// back accordingly.
+async function presentMemberIds(channelId: string, memberSet: Set<string>): Promise<string[] | null> {
+  try {
+    const res = await pusherServer.get({ path: `/channels/presence-channel-${channelId}/users` });
+    if (res.status !== 200) return null;
+    const data = (await res.json()) as { users?: { id: string }[] };
+    return (data.users ?? []).map((u) => u.id).filter((id) => memberSet.has(id));
+  } catch (err) {
+    console.error("@here presence lookup failed; falling back to all members:", err);
+    return null;
+  }
+}
+
 function encryptOrNull(value: string | null): string | null {
   return value === null ? null : encryptMessage(value);
 }
@@ -162,8 +179,22 @@ export async function deliverMessage(input: DeliverInput): Promise<{ message: De
   const memberSet = new Set(memberIds);
 
   if (input.mentionedUserIds?.length) {
+    const targets = new Set(input.mentionedUserIds);
+
+    // Individual @user mentions — validated against real membership.
     for (const id of input.mentionedUserIds) {
       if (memberSet.has(id)) addRecipient(id, "MENTION");
+    }
+
+    // Broadcast mentions. @channel/@everyone → every member. @here → members
+    // currently present in the channel (Slack semantics), resolved from the
+    // Pusher presence channel; on lookup failure we fall back to all members so
+    // a broadcast is never silently dropped.
+    if (targets.has("@channel") || targets.has("@everyone")) {
+      for (const id of memberIds) addRecipient(id, "MENTION");
+    } else if (targets.has("@here")) {
+      const present = await presentMemberIds(channelId, memberSet);
+      for (const id of present ?? memberIds) addRecipient(id, "MENTION");
     }
   }
   if (channel.isDm) {
