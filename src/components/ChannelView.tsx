@@ -14,6 +14,7 @@ import { Avatar } from "@/components/Avatar";
 import { ChannelNotifyMenu } from "@/components/ChannelNotifyMenu";
 import { ScheduledPanel } from "@/components/ScheduledPanel";
 import { ChannelFilesView } from "@/components/ChannelFilesView";
+import { BookmarksBar } from "@/components/BookmarksBar";
 import { useHuddleControls } from "@/components/HuddleProvider";
 import { useHuddleRoster } from "@/hooks/useHuddleRoster";
 import { useMobileNav } from "@/components/MobileNavContext";
@@ -369,6 +370,13 @@ export function ChannelView({
             </div>
           </div>
         </header>
+
+        <BookmarksBar
+          channelId={channelId}
+          currentUserId={currentUserId}
+          isAdmin={!!isAdmin}
+          isArchived={!!isArchived}
+        />
 
         {/* Tabs — Messages / Files & links */}
         <div className="flex shrink-0 items-center gap-4 border-b border-[var(--color-line)] px-5">

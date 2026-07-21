@@ -74,6 +74,7 @@ model User {
   assignedListItems       ListItem[]         @relation("AssignedItems")
   createdWorkflows        Workflow[]         @relation("CreatedWorkflows")
   reminders               Reminder[]
+  channelBookmarks        ChannelBookmark[]
 }
 
 model Account {
@@ -140,6 +141,7 @@ model Channel {
   scheduledMessages ScheduledMessage[]
   workflows     Workflow[]
   reminders     Reminder[]
+  bookmarks     ChannelBookmark[]
 
   @@index([isPrivate, isDm])
 }
@@ -354,6 +356,25 @@ model Reminder {
 
   @@index([firedAt, remindAt])
   @@index([userId])
+}
+
+// A channel bookmark — a quick-access link pinned to the top of a channel
+// (Slack's bookmarks bar). Any member can add one; the creator or an admin can
+// remove it. Ordered by `position` for stable left-to-right display.
+model ChannelBookmark {
+  id          String   @id @default(cuid())
+  channelId   String
+  title       String
+  url         String
+  emoji       String? // optional leading emoji/token; falls back to a link glyph
+  createdById String
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  createdBy User    @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([channelId, position])
 }
 
 model Notification {
