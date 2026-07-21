@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { splitMentions, extractBroadcastMentions } from "@/lib/mentions";
+import { SLASH_COMMANDS, parseCommand, type SlashCommand } from "@/lib/commands";
 import { FullEmojiPicker } from "@/components/FullEmojiPicker";
 import { Avatar } from "@/components/Avatar";
 
@@ -71,7 +72,9 @@ export function MessageComposer({
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
+  const [slash, setSlash] = useState<string | null>(null);
   const [highlightIndex, setHighlightIndex] = useState(0);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -190,6 +193,11 @@ export function MessageComposer({
     : [];
   const mentionOpen = mention !== null && suggestions.length > 0;
 
+  // Slash-command autocomplete: shown only while the whole input is "/word"
+  // (before any argument). Mutually exclusive with the @-mention menu.
+  const slashCandidates: SlashCommand[] = slash !== null ? SLASH_COMMANDS.filter((c) => c.name.startsWith(slash.toLowerCase())) : [];
+  const slashOpen = slash !== null && slashCandidates.length > 0;
+
   // Derived from the final text at send time (not tracked at insertion)
   // so editing or deleting an inserted "@Name" before sending is handled
   // for free — reuses the same member-name matching MessageRow already
@@ -210,9 +218,66 @@ export function MessageComposer({
     return ids.size ? [...ids] : undefined;
   }
 
+  function flashNotice(msg: string) {
+    setNotice(msg);
+    setTimeout(() => setNotice(null), 4000);
+  }
+
+  // Run a slash command. "action" commands hit an API and clear the input;
+  // "transform" commands return a rewritten body to post (or null on a usage
+  // error). Returns { post } when there's still something to send.
+  async function runCommand(command: SlashCommand, rest: string): Promise<{ post: string } | null> {
+    if (command.kind === "transform") {
+      if (command.name === "shrug") return { post: `${rest} ¯\\_(ツ)_/¯`.trim() };
+      if (command.name === "me") {
+        if (!rest) { setError("Usage: /me <action>"); return null; }
+        return { post: `*${rest}*` };
+      }
+      return null;
+    }
+    // Action commands.
+    setSending(true);
+    setError(null);
+    try {
+      if (command.name === "status") {
+        const clear = rest === "" || rest.toLowerCase() === "clear";
+        const res = await fetch("/api/status", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(clear ? { emoji: null, text: null, expiresAt: null } : { text: rest }),
+        });
+        if (!res.ok) setError((await res.json().catch(() => ({}))).error ?? "Couldn't set status");
+        else { setValue(""); clearDraft(); flashNotice(clear ? "Status cleared" : `Status set: ${rest}`); }
+      } else if (command.name === "dnd") {
+        const off = rest.toLowerCase() === "off";
+        const res = await fetch("/api/notification-preferences", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dndUntil: off ? null : "2999-12-31T00:00:00.000Z" }),
+        });
+        if (!res.ok) setError("Couldn't update Do Not Disturb");
+        else { setValue(""); clearDraft(); flashNotice(off ? "Notifications resumed" : "Do Not Disturb on — notifications paused"); }
+      }
+    } finally {
+      setSending(false);
+    }
+    return null;
+  }
+
   async function submit() {
-    const body = value.trim();
-    if ((!body && readyAttachmentIds.length === 0) || sending || uploadingCount > 0) return;
+    const raw = value.trim();
+    if ((!raw && readyAttachmentIds.length === 0) || sending || uploadingCount > 0) return;
+
+    // A leading known slash command (only for text-only messages) is handled
+    // specially: actions run their API; transforms rewrite the body to post.
+    const parsed = readyAttachmentIds.length === 0 ? parseCommand(raw) : null;
+    let body = raw;
+    if (parsed) {
+      const result = await runCommand(parsed.command, parsed.rest);
+      if (!result) return; // action ran, or a transform usage error was set
+      body = result.post;
+    }
+
     setSending(true);
     setError(null);
     try {
@@ -270,6 +335,15 @@ export function MessageComposer({
     onTyping?.();
     saveDraftDebounced(newValue);
 
+    // Slash-command menu: only while the entire input is "/word" (no space yet).
+    const sm = /^\/(\w*)$/.exec(newValue);
+    if (sm) {
+      setSlash(sm[1]);
+      setHighlightIndex(0);
+    } else if (slash !== null) {
+      setSlash(null);
+    }
+
     if (!members || members.length === 0) return;
     const cursor = e.target.selectionStart ?? newValue.length;
     const match = MENTION_TRIGGER.exec(newValue.slice(0, cursor));
@@ -279,6 +353,17 @@ export function MessageComposer({
     } else {
       setMention(null);
     }
+  }
+
+  function selectSlash(cmd: SlashCommand | undefined) {
+    if (!cmd) return;
+    const next = `/${cmd.name} `;
+    setValue(next);
+    setSlash(null);
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(next.length, next.length);
+    });
   }
 
   function selectSuggestion(s: Suggestion | undefined) {
@@ -315,6 +400,29 @@ export function MessageComposer({
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (slashOpen) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setHighlightIndex((i) => (i + 1) % slashCandidates.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setHighlightIndex((i) => (i - 1 + slashCandidates.length) % slashCandidates.length);
+        return;
+      }
+      if (e.key === "Tab") {
+        e.preventDefault();
+        selectSlash(slashCandidates[highlightIndex]);
+        return;
+      }
+      if (e.key === "Escape") {
+        setSlash(null);
+        return;
+      }
+      // Enter falls through: if you've typed a complete command it runs; the
+      // menu is just guidance.
+    }
     if (mentionOpen) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -404,6 +512,27 @@ export function MessageComposer({
             ))}
           </div>
         )}
+        {slashOpen && (
+          <div className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-52 overflow-y-auto rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] shadow-lg">
+            <p className="px-3 pb-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">Commands</p>
+            {slashCandidates.map((c, i) => (
+              <button
+                key={c.name}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  selectSlash(c);
+                }}
+                className={`flex w-full items-baseline gap-2 px-3 py-1.5 text-left ${
+                  i === highlightIndex ? "bg-[var(--color-accent-soft)]" : "hover:bg-[var(--color-accent-soft)]"
+                }`}
+              >
+                <span className="font-mono text-sm font-medium text-[var(--color-ink)]">/{c.name}</span>
+                <span className="font-mono text-xs text-[var(--color-ink-soft)]">{c.args}</span>
+                <span className="ml-auto truncate text-xs text-[var(--color-ink-soft)]">{c.description}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <textarea
           ref={textareaRef}
           value={value}
@@ -488,6 +617,7 @@ export function MessageComposer({
         </div>
       </div>
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {notice && <p className="mt-1 text-xs text-[var(--color-accent)]">{notice}</p>}
     </div>
   );
 }
