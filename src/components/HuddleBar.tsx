@@ -482,7 +482,12 @@ export function HuddleControls({
               <LiveHuddleTile
                 key={p.identity}
                 participant={p}
-                trackRef={cameraTracks.find((t) => t.participant.identity === p.identity)}
+                // Only show a live video tile when the camera is actually on —
+                // setCameraEnabled(false) mutes the publication, so a muted
+                // track means "camera off" and the tile falls back to the avatar.
+                trackRef={cameraTracks.find(
+                  (t) => t.participant.identity === p.identity && !t.publication?.isMuted
+                )}
                 pixelSize={tileSize}
               />
             ))}
