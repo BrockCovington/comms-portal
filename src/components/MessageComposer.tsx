@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { splitMentions, extractBroadcastMentions } from "@/lib/mentions";
+import { splitMentions, extractBroadcastMentions, extractGroupMentions } from "@/lib/mentions";
 import { SLASH_COMMANDS, parseCommand, type SlashCommand } from "@/lib/commands";
+import { useGroups, type GroupItem } from "@/components/GroupsContext";
 import { FullEmojiPicker } from "@/components/FullEmojiPicker";
 import { Avatar } from "@/components/Avatar";
 
@@ -19,6 +20,7 @@ const BROADCASTS: { token: string; label: string; desc: string }[] = [
 
 type Suggestion =
   | { kind: "broadcast"; token: string; label: string; desc: string }
+  | { kind: "group"; group: GroupItem }
   | { kind: "member"; member: ComposerMember };
 
 // Matches a trailing "@query" at the cursor, up to two words — this app's
@@ -84,6 +86,7 @@ export function MessageComposer({
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const valueRef = useRef(value);
   valueRef.current = value;
+  const { groups } = useGroups();
 
   // Load any existing draft when the channel changes, and flush a
   // pending debounced save if you navigate away mid-type.
@@ -186,6 +189,9 @@ export function MessageComposer({
           kind: "broadcast" as const,
           ...b,
         })),
+        ...groups
+          .filter((g) => g.handle.toLowerCase().includes(q) || g.name.toLowerCase().includes(q))
+          .map((g) => ({ kind: "group" as const, group: g })),
         ...(members ?? [])
           .filter((m) => (m.name ?? m.email).toLowerCase().includes(q))
           .map((m) => ({ kind: "member" as const, member: m })),
@@ -215,6 +221,8 @@ export function MessageComposer({
     // @channel / @here / @everyone ride along as literal tokens; the server
     // expands them to member ids at fan-out time.
     extractBroadcastMentions(body).forEach((t) => ids.add(t));
+    // @group handles become "@group:<id>" tokens, expanded server-side too.
+    extractGroupMentions(body, groups).forEach((t) => ids.add(t));
     return ids.size ? [...ids] : undefined;
   }
 
@@ -368,7 +376,7 @@ export function MessageComposer({
 
   function selectSuggestion(s: Suggestion | undefined) {
     if (!s || !mention) return;
-    const name = s.kind === "broadcast" ? s.label : s.member.name ?? s.member.email;
+    const name = s.kind === "broadcast" ? s.label : s.kind === "group" ? s.group.handle : s.member.name ?? s.member.email;
     const cursor = textareaRef.current?.selectionStart ?? value.length;
     const before = value.slice(0, mention.start);
     const after = value.slice(cursor);
@@ -485,7 +493,7 @@ export function MessageComposer({
           <div className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-40 overflow-y-auto rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] shadow-lg">
             {suggestions.map((s, i) => (
               <button
-                key={s.kind === "broadcast" ? s.token : s.member.id}
+                key={s.kind === "broadcast" ? s.token : s.kind === "group" ? s.group.id : s.member.id}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   selectSuggestion(s);
@@ -501,6 +509,16 @@ export function MessageComposer({
                     </span>
                     <span className="font-medium text-[var(--color-ink)]">{s.token}</span>
                     <span className="truncate text-xs text-[var(--color-ink-soft)]">{s.desc}</span>
+                  </>
+                ) : s.kind === "group" ? (
+                  <>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[var(--color-accent-soft)] text-[11px] font-semibold text-[var(--color-accent)]">
+                      @
+                    </span>
+                    <span className="font-medium text-[var(--color-ink)]">@{s.group.handle}</span>
+                    <span className="truncate text-xs text-[var(--color-ink-soft)]">
+                      {s.group.name} · {s.group.memberCount} {s.group.memberCount === 1 ? "person" : "people"}
+                    </span>
                   </>
                 ) : (
                   <>

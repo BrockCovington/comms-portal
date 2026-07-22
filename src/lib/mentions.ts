@@ -12,8 +12,12 @@ export type BroadcastMention = (typeof BROADCAST_MENTIONS)[number];
 // broadcast keywords (@channel/@here/@everyone) are always recognized too.
 // Longest names first so "Marcus Chen" matches whole rather than stopping at
 // "Marcus".
-export function splitMentions(text: string, memberNames: string[]): MentionFragment[] {
-  const names = [...memberNames.filter(Boolean), ...BROADCAST_MENTIONS].sort(
+export function splitMentions(
+  text: string,
+  memberNames: string[],
+  groupHandles: string[] = []
+): MentionFragment[] {
+  const names = [...memberNames.filter(Boolean), ...groupHandles.filter(Boolean), ...BROADCAST_MENTIONS].sort(
     (a, b) => b.length - a.length
   );
 
@@ -44,5 +48,24 @@ export function extractBroadcastMentions(text: string): string[] {
   const re = /(?:^|\s)@(channel|here|everyone)\b/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) found.add(`@${m[1]}`);
+  return [...found];
+}
+
+// The distinct user-group mentions present in `text`, as "@group:<id>" tokens.
+// `groups` maps each known handle to its id; the server expands these tokens to
+// the group's members at fan-out time.
+export function extractGroupMentions(text: string, groups: { handle: string; id: string }[]): string[] {
+  if (groups.length === 0) return [];
+  const byHandle = new Map(groups.map((g) => [g.handle.toLowerCase(), g.id]));
+  const escaped = groups
+    .map((g) => g.handle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .sort((a, b) => b.length - a.length);
+  const re = new RegExp(`(?:^|\\s)@(${escaped.join("|")})\\b`, "gi");
+  const found = new Set<string>();
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    const id = byHandle.get(m[1].toLowerCase());
+    if (id) found.add(`@group:${id}`);
+  }
   return [...found];
 }

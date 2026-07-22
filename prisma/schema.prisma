@@ -75,6 +75,8 @@ model User {
   createdWorkflows        Workflow[]         @relation("CreatedWorkflows")
   reminders               Reminder[]
   channelBookmarks        ChannelBookmark[]
+  createdGroups           UserGroup[]        @relation("CreatedGroups")
+  groupMemberships        UserGroupMember[]
 }
 
 model Account {
@@ -375,6 +377,33 @@ model ChannelBookmark {
   createdBy User    @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([channelId, position])
+}
+
+// A user group — a named, @-mentionable set of people (e.g. @eng). Managed by
+// admins. Mentioning @handle notifies every member who's in the channel, via
+// the same fan-out as broadcast mentions (see src/lib/deliver.ts).
+model UserGroup {
+  id          String   @id @default(cuid())
+  handle      String   @unique // lowercase token used in "@handle" (no spaces)
+  name        String // human-readable display name
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User?             @relation("CreatedGroups", fields: [createdById], references: [id], onDelete: SetNull)
+  members   UserGroupMember[]
+}
+
+model UserGroupMember {
+  id      String @id @default(cuid())
+  groupId String
+  userId  String
+
+  group UserGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
 }
 
 model Notification {

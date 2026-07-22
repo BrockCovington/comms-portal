@@ -7,6 +7,7 @@ import { FullEmojiPicker } from "@/components/FullEmojiPicker";
 import { EditHistory } from "@/components/EditHistory";
 import { ForwardDialog } from "@/components/ForwardDialog";
 import { useCustomEmoji } from "@/components/CustomEmojiContext";
+import { useGroups } from "@/components/GroupsContext";
 import { Avatar } from "@/components/Avatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ProfileCard } from "@/components/ProfileCard";
@@ -146,7 +147,8 @@ function renderSegments(segments: RichSegment[]) {
 
 function RichBody({ body, memberNames }: { body: string; memberNames: string[] }) {
   const { byName } = useCustomEmoji();
-  const blocks = renderRichText(body, memberNames, byName);
+  const { handles } = useGroups();
+  const blocks = renderRichText(body, memberNames, byName, handles);
   return (
     <div className="whitespace-pre-wrap break-words text-sm text-[var(--color-ink)]">
       {blocks.map((block, i) =>

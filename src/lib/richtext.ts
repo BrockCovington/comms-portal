@@ -60,9 +60,10 @@ function splitInline(text: string, customEmoji?: Map<string, string>): RichSegme
 function splitSegments(
   text: string,
   memberNames: string[],
-  customEmoji?: Map<string, string>
+  customEmoji?: Map<string, string>,
+  groupHandles: string[] = []
 ): RichSegment[] {
-  const mentionFragments = splitMentions(text, memberNames);
+  const mentionFragments = splitMentions(text, memberNames, groupHandles);
   const segments: RichSegment[] = [];
   for (const fragment of mentionFragments) {
     if (fragment.isMention) {
@@ -83,7 +84,8 @@ const BULLET_PATTERN = /^[-*]\s+/;
 export function renderRichText(
   body: string,
   memberNames: string[],
-  customEmoji?: Map<string, string>
+  customEmoji?: Map<string, string>,
+  groupHandles: string[] = []
 ): RichBlock[] {
   const lines = body.split("\n");
   const blocks: RichBlock[] = [];
@@ -93,7 +95,8 @@ export function renderRichText(
     const segments = splitSegments(
       isBullet ? line.replace(BULLET_PATTERN, "") : line,
       memberNames,
-      customEmoji
+      customEmoji,
+      groupHandles
     );
     const last = blocks[blocks.length - 1];
 

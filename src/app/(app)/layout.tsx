@@ -10,7 +10,9 @@ import { NotificationToasts } from "@/components/NotificationToasts";
 import { IncomingHuddle } from "@/components/IncomingHuddle";
 import { HuddleProvider } from "@/components/HuddleProvider";
 import { CustomEmojiProvider } from "@/components/CustomEmojiContext";
+import { GroupsProvider } from "@/components/GroupsContext";
 import { QuickReactionsProvider } from "@/components/QuickReactionsProvider";
+import { getGroupsForList } from "@/lib/groups";
 import { getChannelsWithUnread } from "@/lib/channels";
 import { getHuddleReactions } from "@/lib/huddleReactions";
 import { getChannelSections } from "@/lib/channelSections";
@@ -30,7 +32,7 @@ export default async function AppLayout({
   if (!session?.user?.id) redirect("/signin");
 
   const userId = session.user.id;
-  const [channelsWithUnread, channelSections, dmThreads, threads, savedMessages, drafts, files, huddleReactions, customEmoji] =
+  const [channelsWithUnread, channelSections, dmThreads, threads, savedMessages, drafts, files, huddleReactions, customEmoji, groups] =
     await Promise.all([
       getChannelsWithUnread(userId),
       getChannelSections(userId),
@@ -44,6 +46,7 @@ export default async function AppLayout({
         .findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } })
         // Client uses the access-checked proxy path, never the private Blob URL.
         .then((rows) => rows.map((e) => ({ id: e.id, name: e.name, url: `/api/emoji/${e.id}` }))),
+      getGroupsForList(),
     ]);
   const user = {
     name: session.user.name ?? session.user.email ?? "You",
@@ -58,6 +61,7 @@ export default async function AppLayout({
 
   return (
     <CustomEmojiProvider initialEmoji={customEmoji}>
+      <GroupsProvider initialGroups={groups}>
       <QuickReactionsProvider initial={huddleReactions}>
       <HuddleProvider currentUserId={userId}>
         <AppShell
@@ -91,6 +95,7 @@ export default async function AppLayout({
         <IncomingHuddle currentUserId={userId} />
       </HuddleProvider>
       </QuickReactionsProvider>
+      </GroupsProvider>
     </CustomEmojiProvider>
   );
 }

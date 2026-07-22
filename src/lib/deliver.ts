@@ -199,6 +199,20 @@ export async function deliverMessage(input: DeliverInput): Promise<{ message: De
       const present = await presentMemberIds(channelId, memberSet);
       for (const id of present ?? memberIds) addRecipient(id, "MENTION");
     }
+
+    // Group mentions: "@group:<id>" → the group's members who are in this channel.
+    const groupIds = input.mentionedUserIds
+      .filter((t) => t.startsWith("@group:"))
+      .map((t) => t.slice("@group:".length));
+    if (groupIds.length) {
+      const groupMembers = await prisma.userGroupMember.findMany({
+        where: { groupId: { in: groupIds } },
+        select: { userId: true },
+      });
+      for (const { userId: memberId } of groupMembers) {
+        if (memberSet.has(memberId)) addRecipient(memberId, "MENTION");
+      }
+    }
   }
   if (channel.isDm) {
     for (const id of memberIds) addRecipient(id, "DM");

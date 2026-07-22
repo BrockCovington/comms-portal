@@ -15,7 +15,22 @@ const NON_EMOJI_CHARS = /[a-zA-Z0-9\s]/;
 const mentionTarget = z.union([
   z.string().cuid(),
   z.enum(["@channel", "@here", "@everyone"]),
+  // "@group:<cuid>" — a user-group mention, expanded to members at fan-out.
+  z.string().regex(/^@group:[a-z0-9]{20,32}$/i),
 ]);
+
+const GROUP_HANDLE = /^[a-z0-9][a-z0-9-]{1,29}$/;
+export const createGroupSchema = z.object({
+  handle: z.string().trim().toLowerCase().regex(GROUP_HANDLE, "Handle: lowercase letters, numbers and hyphens (2–30 chars)"),
+  name: z.string().trim().min(1, "Name is required").max(50),
+});
+export const updateGroupSchema = z.object({
+  handle: z.string().trim().toLowerCase().regex(GROUP_HANDLE, "Handle: lowercase letters, numbers and hyphens (2–30 chars)").optional(),
+  name: z.string().trim().min(1).max(50).optional(),
+});
+export const setGroupMembersSchema = z.object({
+  memberIds: z.array(z.string().cuid()).max(1000),
+});
 
 export const createChannelSchema = z.object({
   name: z

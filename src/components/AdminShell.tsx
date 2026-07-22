@@ -8,6 +8,7 @@ import { MenuIcon } from "@/components/RailIcons";
 const TABS = [
   { href: "/admin/users", label: "Members & roles" },
   { href: "/admin/channels", label: "Channels" },
+  { href: "/admin/groups", label: "User groups" },
 ];
 
 // Shared chrome for the dedicated admin pages: a sticky header with a sub-nav
