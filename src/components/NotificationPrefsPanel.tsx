@@ -1,8 +1,47 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { minutesToHHMM, hhmmToMinutes } from "@/lib/quietHours";
 
-type Prefs = { dndUntil: string | null; keywords: string[] };
+type Prefs = {
+  dndUntil: string | null;
+  keywords: string[];
+  quietHoursEnabled: boolean;
+  quietStartMinute: number;
+  quietEndMinute: number;
+  quietTimezone: string;
+};
+
+const DEFAULT_PREFS: Prefs = {
+  dndUntil: null,
+  keywords: [],
+  quietHoursEnabled: false,
+  quietStartMinute: 1320,
+  quietEndMinute: 480,
+  quietTimezone: "UTC",
+};
+
+const QUIET_ZONES = [
+  "America/Los_Angeles",
+  "America/Denver",
+  "America/Chicago",
+  "America/New_York",
+  "UTC",
+  "Europe/London",
+  "Europe/Berlin",
+  "Asia/Kolkata",
+  "Asia/Singapore",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+];
+
+function detectedZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
 
 const DND_PRESETS: { label: string; minutes: number }[] = [
   { label: "30 minutes", minutes: 30 },
@@ -27,9 +66,9 @@ export function NotificationPrefsPanel({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     fetch("/api/notification-preferences", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { dndUntil: null, keywords: [] }))
-      .then(setPrefs)
-      .catch(() => setPrefs({ dndUntil: null, keywords: [] }));
+      .then((r) => (r.ok ? r.json() : DEFAULT_PREFS))
+      .then((d) => setPrefs({ ...DEFAULT_PREFS, ...d }))
+      .catch(() => setPrefs(DEFAULT_PREFS));
   }, []);
 
   async function save(patch: Partial<Prefs>) {
@@ -61,6 +100,14 @@ export function NotificationPrefsPanel({ onClose }: { onClose: () => void }) {
   function removeKeyword(kw: string) {
     if (!prefs) return;
     save({ keywords: prefs.keywords.filter((k) => k !== kw) });
+  }
+
+  function toggleQuiet(enabled: boolean) {
+    if (!prefs) return;
+    const patch: Partial<Prefs> = { quietHoursEnabled: enabled };
+    // First time on, default the schedule to the viewer's own timezone.
+    if (enabled && prefs.quietTimezone === "UTC") patch.quietTimezone = detectedZone();
+    save(patch);
   }
 
   const activeDnd = prefs ? dndLabel(prefs.dndUntil) : null;
@@ -102,6 +149,53 @@ export function NotificationPrefsPanel({ onClose }: { onClose: () => void }) {
                   {p.label}
                 </button>
               ))}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4">
+          <label className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
+              Notification schedule
+            </span>
+            <input
+              type="checkbox"
+              checked={prefs?.quietHoursEnabled ?? false}
+              onChange={(e) => toggleQuiet(e.target.checked)}
+              disabled={saving || !prefs}
+              className="h-4 w-4"
+            />
+          </label>
+          <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
+            Pause notifications every day during these hours. They still appear in Activity.
+          </p>
+          {prefs?.quietHoursEnabled && (
+            <div className="mt-1.5 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-sm">
+                <span className="text-[var(--color-ink-soft)]">From</span>
+                <input
+                  type="time"
+                  value={minutesToHHMM(prefs.quietStartMinute)}
+                  onChange={(e) => { const m = hhmmToMinutes(e.target.value); if (m !== null) save({ quietStartMinute: m }); }}
+                  className="rounded border border-[var(--color-line)] bg-transparent px-1.5 py-1 text-sm outline-none focus:border-[var(--color-accent)]"
+                />
+                <span className="text-[var(--color-ink-soft)]">to</span>
+                <input
+                  type="time"
+                  value={minutesToHHMM(prefs.quietEndMinute)}
+                  onChange={(e) => { const m = hhmmToMinutes(e.target.value); if (m !== null) save({ quietEndMinute: m }); }}
+                  className="rounded border border-[var(--color-line)] bg-transparent px-1.5 py-1 text-sm outline-none focus:border-[var(--color-accent)]"
+                />
+              </div>
+              <select
+                value={prefs.quietTimezone}
+                onChange={(e) => save({ quietTimezone: e.target.value })}
+                className="w-full rounded border border-[var(--color-line)] bg-transparent px-1.5 py-1 text-sm outline-none focus:border-[var(--color-accent)]"
+              >
+                {[...new Set([...QUIET_ZONES, prefs.quietTimezone])].map((z) => (
+                  <option key={z} value={z}>{z}</option>
+                ))}
+              </select>
             </div>
           )}
         </div>

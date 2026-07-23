@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { encryptMessage } from "@/lib/crypto";
 import { pusherServer, pusherChannelName, userChannelName } from "@/lib/pusher";
 import { extractFirstUrl, fetchLinkPreview } from "@/lib/unfurl";
+import { isQuietNow } from "@/lib/quietHours";
 import type { NotificationType } from "@prisma/client";
 
 // ---------------------------------------------------------------------------
@@ -174,7 +175,15 @@ export async function deliverMessage(input: DeliverInput): Promise<{ message: De
     }),
     prisma.notificationPreference.findMany({
       where: { userId: { in: memberIds } },
-      select: { userId: true, dndUntil: true, keywords: true },
+      select: {
+        userId: true,
+        dndUntil: true,
+        keywords: true,
+        quietHoursEnabled: true,
+        quietStartMinute: true,
+        quietEndMinute: true,
+        quietTimezone: true,
+      },
     }),
   ]);
   const channelPref = new Map(channelPrefRows.map((p) => [p.userId, p]));
@@ -245,10 +254,14 @@ export async function deliverMessage(input: DeliverInput): Promise<{ message: De
   }
 
   const now = created.createdAt;
+  // Users whose live push is suppressed: snoozed (DND) OR currently within
+  // their recurring quiet hours. Either way the notification row is still
+  // created — they just don't get a live toast/badge push.
   const dndUserIds = new Set(
     memberIds.filter((id) => {
-      const until = globalPref.get(id)?.dndUntil;
-      return until && until > now;
+      const pref = globalPref.get(id);
+      if (pref?.dndUntil && pref.dndUntil > now) return true;
+      return pref ? isQuietNow(pref, now) : false;
     })
   );
 

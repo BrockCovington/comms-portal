@@ -13,7 +13,21 @@ const updateSchema = z.object({
     .array(z.string().trim().toLowerCase().min(2).max(40))
     .max(20)
     .optional(),
+  // Recurring quiet hours (notification schedule).
+  quietHoursEnabled: z.boolean().optional(),
+  quietStartMinute: z.number().int().min(0).max(1439).optional(),
+  quietEndMinute: z.number().int().min(0).max(1439).optional(),
+  quietTimezone: z.string().trim().min(1).max(64).optional(),
 });
+
+const QUIET_SELECT = {
+  dndUntil: true,
+  keywords: true,
+  quietHoursEnabled: true,
+  quietStartMinute: true,
+  quietEndMinute: true,
+  quietTimezone: true,
+} as const;
 
 export async function GET() {
   const userId = await getCurrentUserId();
@@ -21,11 +35,15 @@ export async function GET() {
 
   const pref = await prisma.notificationPreference.findUnique({
     where: { userId },
-    select: { dndUntil: true, keywords: true },
+    select: QUIET_SELECT,
   });
   return NextResponse.json({
     dndUntil: pref?.dndUntil ?? null,
     keywords: pref?.keywords ?? [],
+    quietHoursEnabled: pref?.quietHoursEnabled ?? false,
+    quietStartMinute: pref?.quietStartMinute ?? 1320,
+    quietEndMinute: pref?.quietEndMinute ?? 480,
+    quietTimezone: pref?.quietTimezone ?? "UTC",
   });
 }
 
@@ -47,7 +65,14 @@ export async function PUT(request: Request) {
     );
   }
 
-  const data: { dndUntil?: Date | null; keywords?: string[] } = {};
+  const data: {
+    dndUntil?: Date | null;
+    keywords?: string[];
+    quietHoursEnabled?: boolean;
+    quietStartMinute?: number;
+    quietEndMinute?: number;
+    quietTimezone?: string;
+  } = {};
   if (parsed.data.dndUntil !== undefined) {
     data.dndUntil = parsed.data.dndUntil ? new Date(parsed.data.dndUntil) : null;
   }
@@ -55,13 +80,24 @@ export async function PUT(request: Request) {
     // De-dupe and drop empties.
     data.keywords = [...new Set(parsed.data.keywords.filter(Boolean))];
   }
+  if (parsed.data.quietHoursEnabled !== undefined) data.quietHoursEnabled = parsed.data.quietHoursEnabled;
+  if (parsed.data.quietStartMinute !== undefined) data.quietStartMinute = parsed.data.quietStartMinute;
+  if (parsed.data.quietEndMinute !== undefined) data.quietEndMinute = parsed.data.quietEndMinute;
+  if (parsed.data.quietTimezone !== undefined) data.quietTimezone = parsed.data.quietTimezone;
 
   const pref = await prisma.notificationPreference.upsert({
     where: { userId },
     create: { userId, ...data },
     update: data,
-    select: { dndUntil: true, keywords: true },
+    select: QUIET_SELECT,
   });
 
-  return NextResponse.json({ dndUntil: pref.dndUntil, keywords: pref.keywords });
+  return NextResponse.json({
+    dndUntil: pref.dndUntil,
+    keywords: pref.keywords,
+    quietHoursEnabled: pref.quietHoursEnabled,
+    quietStartMinute: pref.quietStartMinute,
+    quietEndMinute: pref.quietEndMinute,
+    quietTimezone: pref.quietTimezone,
+  });
 }

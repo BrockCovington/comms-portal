@@ -673,5 +673,14 @@ model NotificationPreference {
   dndUntil DateTime? // notifications pushed to null/past = not snoozed
   keywords String[] // alert words: notify when any appears in a message
 
+  // Notification schedule (recurring quiet hours). When enabled, live pushes
+  // are suppressed daily between quietStart and quietEnd (minutes from midnight
+  // in quietTimezone); the notifications still land in Activity. A window where
+  // start > end wraps past midnight (e.g. 22:00 → 08:00).
+  quietHoursEnabled Boolean @default(false)
+  quietStartMinute  Int     @default(1320) // 22:00
+  quietEndMinute    Int     @default(480) // 08:00
+  quietTimezone     String  @default("UTC")
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
