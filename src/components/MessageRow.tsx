@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ChatMessage, LinkPreview } from "@/hooks/useMessages";
 import { renderRichText, type RichSegment } from "@/lib/richtext";
 import { FullEmojiPicker } from "@/components/FullEmojiPicker";
@@ -203,6 +203,7 @@ export function MessageRow({
   onTogglePin,
   htmlId,
   isHighlighted,
+  autoEdit,
 }: {
   channelId: string;
   message: ChatMessage;
@@ -217,6 +218,8 @@ export function MessageRow({
   onTogglePin?: (messageId: string) => Promise<void>;
   htmlId?: string;
   isHighlighted?: boolean;
+  // Set true to programmatically open this row's editor (the ↑-to-edit shortcut).
+  autoEdit?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.body);
@@ -294,6 +297,12 @@ export function MessageRow({
     setActionError(null);
     setEditing(true);
   }
+
+  // The ↑-to-edit shortcut: when the parent flags this row, open its editor.
+  useEffect(() => {
+    if (autoEdit && onEdit && !message.deletedAt) startEdit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoEdit]);
 
   async function submitEdit() {
     const body = draft.trim();

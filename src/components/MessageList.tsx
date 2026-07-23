@@ -53,6 +53,23 @@ export function MessageList({
   const [flashId, setFlashId] = useState<string | null>(null);
   const highlightedForRef = useRef<string | null>(null);
 
+  // ↑-to-edit: the composer dispatches "app:edit-last-message" when you press ↑
+  // in an empty box; open the editor for your most recent (non-deleted) message.
+  const [autoEditId, setAutoEditId] = useState<string | null>(null);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  useEffect(() => {
+    function onEditLast() {
+      const own = [...messagesRef.current].reverse().find((m) => m.user.id === currentUserId && !m.deletedAt);
+      if (!own) return;
+      setAutoEditId(own.id);
+      // Clear shortly after so pressing ↑ again re-triggers the same message.
+      setTimeout(() => setAutoEditId(null), 150);
+    }
+    window.addEventListener("app:edit-last-message", onEditLast);
+    return () => window.removeEventListener("app:edit-last-message", onEditLast);
+  }, [currentUserId]);
+
   // Prepending older history changes messages.length just like a new message
   // arriving does, but the two need opposite scroll behavior — appended
   // content should pull the view down to it; prepended history should leave
@@ -220,6 +237,7 @@ export function MessageList({
               onTogglePin={onTogglePin}
               htmlId={`msg-root-${m.id}`}
               isHighlighted={m.id === flashId}
+              autoEdit={m.id === autoEditId}
             />
             {m.id === seenAnchorId && seenAt && (
               <li className="-mt-2 pr-1 text-right text-[11px] text-[var(--color-ink-soft)]">

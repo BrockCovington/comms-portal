@@ -33,7 +33,8 @@ export function QuickSwitcher() {
   // (focus address bar, in some browsers) doesn't also fire.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
+      // Plain ⌘K only — ⌘⇧K is "new DM" (see KeyboardShortcuts).
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
         setOpen((v) => !v);
       }

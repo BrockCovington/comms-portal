@@ -55,6 +55,7 @@ export function MessageComposer({
   draftsEnabled,
   schedulingEnabled,
   onScheduled,
+  editLastEnabled,
 }: {
   channelId: string;
   channelName: string;
@@ -62,6 +63,8 @@ export function MessageComposer({
   placeholder?: string;
   members?: ComposerMember[];
   onTyping?: () => void;
+  // Root-channel composer only: ↑ in an empty box edits your last message.
+  editLastEnabled?: boolean;
   // Root-channel composer only — thread replies (ThreadPanel) don't opt in,
   // see the visual-overhaul plan's scope note.
   draftsEnabled?: boolean;
@@ -451,6 +454,12 @@ export function MessageComposer({
         setMention(null);
         return;
       }
+    }
+    // ↑ in an empty composer (no menus open) → edit your last message.
+    if (editLastEnabled && e.key === "ArrowUp" && value === "" && !slashOpen && !mentionOpen) {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent("app:edit-last-message"));
+      return;
     }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();

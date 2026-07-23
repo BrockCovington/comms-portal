@@ -474,6 +474,7 @@ export function ChannelView({
                   onTyping={sendTyping}
                   draftsEnabled
                   schedulingEnabled
+                  editLastEnabled
                   onScheduled={refreshScheduled}
                 />
               </>
