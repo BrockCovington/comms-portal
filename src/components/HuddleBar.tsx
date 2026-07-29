@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useParticipants,
   useLocalParticipant,
   useTracks,
   useIsSpeaking,
+  useParticipantAttribute,
   VideoTrack,
   MediaDeviceSelect,
 } from "@livekit/components-react";
@@ -151,6 +152,38 @@ function useBackgroundBlur(localParticipant: LocalParticipant) {
   return { supported, enabled, toggle };
 }
 
+// Raise hand is stored as a LiveKit participant attribute rather than a Pusher
+// event: unlike a floating reaction (transient, fire-and-forget), a raised hand
+// is persistent state that stays up until it's lowered, and LiveKit syncs
+// attributes to everyone in the room automatically — including late joiners —
+// and clears them when the participant disconnects, so a raised hand can never
+// get "stuck" after someone leaves. "1" = raised; "" removes the key (LiveKit
+// treats an empty value as a delete). Requires canUpdateOwnMetadata on the join
+// token (granted in the huddle route).
+const HAND_ATTR = "handRaised";
+
+function useRaiseHand(localParticipant: LocalParticipant) {
+  // setAttributes round-trips through the LiveKit server before the local
+  // attribute reflects the change (~sub-second), which would leave the button
+  // lagging its own click. So drive the button off an optimistic override that
+  // reconciles to — and is corrected by — the server-confirmed attribute.
+  const confirmed = useParticipantAttribute(HAND_ATTR, { participant: localParticipant }) === "1";
+  const [optimistic, setOptimistic] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (optimistic !== null && optimistic === confirmed) setOptimistic(null);
+  }, [confirmed, optimistic]);
+  const raised = optimistic ?? confirmed;
+  const toggle = useCallback(() => {
+    const next = !raised;
+    setOptimistic(next);
+    localParticipant.setAttributes({ [HAND_ATTR]: next ? "1" : "" }).catch((err) => {
+      console.warn("Raise hand failed:", err);
+      setOptimistic(null); // revert to the confirmed state on failure
+    });
+  }, [localParticipant, raised]);
+  return { raised, toggle };
+}
+
 const TILE_SIZE_MIN = 96;
 const TILE_SIZE_MAX = 320;
 const TILE_SIZE_STEP = 32;
@@ -217,6 +250,7 @@ function HuddleTile({
   image,
   trackRef,
   isSpeaking,
+  handRaised,
   size,
   pixelSize,
 }: {
@@ -224,6 +258,7 @@ function HuddleTile({
   image: string | null;
   trackRef?: TrackReference;
   isSpeaking?: boolean;
+  handRaised?: boolean;
   size: "sm" | "lg";
   // Only used when size === "lg" — the small pre-join avatars stay a fixed
   // size, but in-call tiles scale continuously via the zoom controls.
@@ -238,6 +273,16 @@ function HuddleTile({
         size === "sm" ? "h-9 w-9" : ""
       } ${isSpeaking ? "border-[var(--color-accent)]" : "border-transparent"}`}
     >
+      {handRaised && (
+        <span
+          title={`${name || "Someone"} raised their hand`}
+          className={`absolute right-1 top-1 z-10 flex items-center justify-center rounded-full bg-amber-400 shadow ${
+            size === "lg" ? "h-6 w-6 text-sm" : "h-4 w-4 text-[10px]"
+          } animate-bounce`}
+        >
+          ✋
+        </span>
+      )}
       {trackRef ? (
         <VideoTrack trackRef={trackRef} className="h-full w-full object-cover" />
       ) : image ? (
@@ -273,12 +318,14 @@ function LiveHuddleTile({
   pixelSize: number;
 }) {
   const isSpeaking = useIsSpeaking(participant);
+  const handRaised = useParticipantAttribute(HAND_ATTR, { participant }) === "1";
   return (
     <HuddleTile
       name={participant.name || null}
       image={decodeParticipantImage(participant.metadata)}
       trackRef={trackRef}
       isSpeaking={isSpeaking}
+      handRaised={handRaised}
       size="lg"
       pixelSize={pixelSize}
     />
@@ -484,6 +531,7 @@ export function HuddleControls({
     useLocalParticipant();
   const noiseFilter = useNoiseFilter(localParticipant);
   const bgBlur = useBackgroundBlur(localParticipant);
+  const raiseHand = useRaiseHand(localParticipant);
   const cameraTracks = useTracks([Track.Source.Camera], { onlySubscribed: true });
   const screenTracks = useTracks([Track.Source.ScreenShare], { onlySubscribed: true });
 
@@ -571,6 +619,13 @@ export function HuddleControls({
             label={isScreenShareEnabled ? "Stop sharing" : "Share screen"}
           >
             🖥️
+          </ControlButton>
+          <ControlButton
+            active={raiseHand.raised}
+            onClick={raiseHand.toggle}
+            label={raiseHand.raised ? "Lower hand" : "Raise hand"}
+          >
+            ✋
           </ControlButton>
           <div className="relative">
             <ControlButton active={pickerOpen} onClick={() => setPickerOpen((v) => !v)} label="React">

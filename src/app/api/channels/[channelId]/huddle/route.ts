@@ -152,7 +152,16 @@ export async function POST(_request: Request, { params }: RouteContext) {
     name,
     metadata: encodeParticipantMetadata(image),
   });
-  token.addGrant({ room: roomName(channelId), roomJoin: true, canPublish: true, canSubscribe: true });
+  token.addGrant({
+    room: roomName(channelId),
+    roomJoin: true,
+    canPublish: true,
+    canSubscribe: true,
+    // Lets a participant set their own attributes (e.g. the raise-hand flag),
+    // which LiveKit then syncs to everyone else in the room. Scoped to their
+    // OWN metadata only — no ability to mutate anyone else's.
+    canUpdateOwnMetadata: true,
+  });
 
   try {
     await pusherServer.trigger(pusherChannelName(channelId), "huddle-participant-joined", {
