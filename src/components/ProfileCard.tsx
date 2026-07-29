@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { EmojiToken } from "@/components/EmojiToken";
+import { PresenceDot } from "@/components/PresenceDot";
+import { usePresence } from "@/components/PresenceContext";
 
 export type CardUser = {
   id: string;
@@ -42,6 +44,7 @@ export function ProfileCard({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const isSelf = user.id === currentUserId;
+  const presence = usePresence().status(user.id);
 
   async function message() {
     setBusy(true);
@@ -71,12 +74,18 @@ export function ProfileCard({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3">
-          <Avatar name={user.name} image={user.image} size={48} variant="solid" />
+          <span className="relative shrink-0">
+            <Avatar name={user.name} image={user.image} size={48} variant="solid" />
+            <PresenceDot userId={user.id} size={12} className="absolute bottom-0 right-0" />
+          </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
               {user.name ?? "Unknown"}
               {isSelf && <span className="ml-1 font-normal text-[var(--color-ink-soft)]">(you)</span>}
             </p>
+            {presence !== "offline" && (
+              <p className="text-xs text-[var(--color-ink-soft)]">{presence === "online" ? "Active" : "Away"}</p>
+            )}
             {statusActive(user) && (
               <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-[var(--color-ink-soft)]">
                 {user.statusEmoji && (

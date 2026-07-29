@@ -4,6 +4,7 @@ import {
   PRIVATE_CHANNEL_PREFIX,
   PRESENCE_CHANNEL_PREFIX,
   USER_CHANNEL_PREFIX,
+  WORKSPACE_PRESENCE_CHANNEL,
 } from "@/lib/pusher";
 import { auth } from "@/auth";
 import { checkChannelAccess } from "@/lib/authz";
@@ -38,6 +39,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     return NextResponse.json(pusherServer.authorizeChannel(socketId, channel));
+  }
+
+  // The workspace-wide presence channel: any signed-in member may join (it's
+  // not a Channel, so there's no per-channel access check).
+  if (channel === WORKSPACE_PRESENCE_CHANNEL) {
+    return NextResponse.json(
+      pusherServer.authorizeChannel(socketId, channel, {
+        user_id: userId,
+        user_info: { name: session?.user?.name ?? null, image: session?.user?.image ?? null },
+      })
+    );
   }
 
   const isPresence = channel.startsWith(PRESENCE_CHANNEL_PREFIX);

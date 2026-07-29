@@ -12,6 +12,7 @@ import { IncomingHuddle } from "@/components/IncomingHuddle";
 import { HuddleProvider } from "@/components/HuddleProvider";
 import { CustomEmojiProvider } from "@/components/CustomEmojiContext";
 import { GroupsProvider } from "@/components/GroupsContext";
+import { PresenceProvider } from "@/components/PresenceContext";
 import { QuickReactionsProvider } from "@/components/QuickReactionsProvider";
 import { getGroupsForList } from "@/lib/groups";
 import { getChannelsWithUnread } from "@/lib/channels";
@@ -63,6 +64,7 @@ export default async function AppLayout({
   return (
     <CustomEmojiProvider initialEmoji={customEmoji}>
       <GroupsProvider initialGroups={groups}>
+      <PresenceProvider currentUserId={userId}>
       <QuickReactionsProvider initial={huddleReactions}>
       <HuddleProvider currentUserId={userId}>
         <AppShell
@@ -97,6 +99,7 @@ export default async function AppLayout({
         <IncomingHuddle currentUserId={userId} />
       </HuddleProvider>
       </QuickReactionsProvider>
+      </PresenceProvider>
       </GroupsProvider>
     </CustomEmojiProvider>
   );

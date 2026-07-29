@@ -35,3 +35,8 @@ export function userChannelName(userId: string): string {
 }
 
 export const USER_CHANNEL_PREFIX = "private-user-";
+
+// A single workspace-wide presence channel every signed-in client joins, for
+// app-wide online/away dots. Not a real Channel — any workspace member may
+// join (authorized in /api/pusher/auth without a channel-access check).
+export const WORKSPACE_PRESENCE_CHANNEL = "presence-workspace";

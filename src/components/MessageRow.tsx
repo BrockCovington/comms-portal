@@ -11,6 +11,7 @@ import { useGroups } from "@/components/GroupsContext";
 import { Avatar } from "@/components/Avatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ProfileCard } from "@/components/ProfileCard";
+import { PresenceDot } from "@/components/PresenceDot";
 import {
   ThreadIcon,
   ForwardIcon,
@@ -356,8 +357,9 @@ export function MessageRow({
             : ""
       } ${rowOpensThread ? "cursor-pointer" : ""}`}
     >
-      <button onClick={openCard} className="shrink-0 rounded-md" aria-label={`${message.user.name ?? "User"} profile`}>
+      <button onClick={openCard} className="relative shrink-0 rounded-md" aria-label={`${message.user.name ?? "User"} profile`}>
         <Avatar name={message.user.name} image={message.user.image} size={36} shape="square" />
+        <PresenceDot userId={message.user.id} className="absolute -bottom-0.5 -right-0.5" ring="ring-[var(--color-canvas)]" />
       </button>
 
       <div className="min-w-0 flex-1">

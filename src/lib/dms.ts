@@ -4,6 +4,7 @@ import { otherMemberLabel, otherMemberImage, otherMemberStatus } from "@/lib/dm"
 
 export type DmThreadSummary = {
   channelId: string;
+  otherUserId: string | null;
   name: string;
   image: string | null;
   statusEmoji: string | null;
@@ -73,6 +74,7 @@ export async function getDmThreadsForUser(userId: string): Promise<DmThreadSumma
       const lastReadAt = lastReadAtByChannel.get(c.id) ?? null;
       return {
         channelId: c.id,
+        otherUserId: c.members.find((m) => m.userId !== userId)?.userId ?? null,
         name: otherMemberLabel(c.members, userId),
         image: otherMemberImage(c.members, userId),
         statusEmoji: otherMemberStatus(c.members, userId).emoji,

@@ -6,6 +6,7 @@ import type { DmThreadSummary } from "@/lib/dms";
 import { Avatar } from "@/components/Avatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { HuddleBadge } from "@/components/HuddleBadge";
+import { PresenceDot } from "@/components/PresenceDot";
 import type { HuddleParticipant } from "@/hooks/useHuddleRoster";
 
 function relativeTime(date: Date | string): string {
@@ -68,7 +69,12 @@ export function DmListColumn({
                     : "text-[var(--color-on-sidebar)] hover:bg-white/10"
                 }`}
               >
-                <Avatar name={t.name} image={t.image} size={32} variant="solid" />
+                <span className="relative shrink-0">
+                  <Avatar name={t.name} image={t.image} size={32} variant="solid" />
+                  {t.otherUserId && (
+                    <PresenceDot userId={t.otherUserId} className="absolute -bottom-0.5 -right-0.5" ring="ring-[var(--color-sidebar)]" />
+                  )}
+                </span>
 
                 <span className="min-w-0 flex-1">
                   <span className="flex items-baseline justify-between gap-2">
