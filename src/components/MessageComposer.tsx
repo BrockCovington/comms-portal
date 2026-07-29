@@ -410,7 +410,53 @@ export function MessageComposer({
     });
   }
 
+  // Wrap the current selection with markdown (e.g. **bold**). With no
+  // selection, insert the markers and drop the cursor between them.
+  function wrapSelection(marker: string) {
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? value.length;
+    const end = el?.selectionEnd ?? value.length;
+    const sel = value.slice(start, end);
+    const next = `${value.slice(0, start)}${marker}${sel}${marker}${value.slice(end)}`;
+    setValue(next);
+    saveDraftDebounced(next);
+    requestAnimationFrame(() => {
+      el?.focus();
+      if (sel) el?.setSelectionRange(start + marker.length, start + marker.length + sel.length);
+      else el?.setSelectionRange(start + marker.length, start + marker.length);
+    });
+  }
+
+  // Toggle "- " bullets on the selected line(s) (or the current line).
+  function toggleBullet() {
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? value.length;
+    const end = el?.selectionEnd ?? value.length;
+    const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+    const nl = value.indexOf("\n", end);
+    const lineEnd = nl === -1 ? value.length : nl;
+    const block = value.slice(lineStart, lineEnd);
+    const lines = block.split("\n");
+    const allBulleted = lines.every((l) => l.trim() === "" || /^- /.test(l));
+    const newBlock = lines
+      .map((l) => (l.trim() === "" ? l : allBulleted ? l.replace(/^- /, "") : `- ${l}`))
+      .join("\n");
+    const next = value.slice(0, lineStart) + newBlock + value.slice(lineEnd);
+    setValue(next);
+    saveDraftDebounced(next);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(lineStart, lineStart + newBlock.length);
+    });
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // Formatting shortcuts (⌘/Ctrl + B / I).
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
+      if (e.key === "b" || e.key === "B") { e.preventDefault(); wrapSelection("**"); return; }
+      if (e.key === "i" || e.key === "I") { e.preventDefault(); wrapSelection("*"); return; }
+    }
+
     if (slashOpen) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -604,7 +650,14 @@ export function MessageComposer({
                 />
               )}
             </div>
-            <span className="text-xs text-[var(--color-ink-soft)]">
+
+            <span className="mx-0.5 h-4 w-px bg-[var(--color-line)]" />
+            <FormatButton onClick={() => wrapSelection("**")} label="Bold (⌘B)"><span className="font-bold">B</span></FormatButton>
+            <FormatButton onClick={() => wrapSelection("*")} label="Italic (⌘I)"><span className="italic">I</span></FormatButton>
+            <FormatButton onClick={() => wrapSelection("`")} label="Code"><span className="font-mono text-[13px]">{"</>"}</span></FormatButton>
+            <FormatButton onClick={toggleBullet} label="Bulleted list"><span className="text-[13px]">☰</span></FormatButton>
+
+            <span className="ml-1 hidden text-xs text-[var(--color-ink-soft)] sm:inline">
               Enter to send · Shift+Enter for a new line
             </span>
           </div>
@@ -707,5 +760,31 @@ function ScheduleMenu({ onPick, onClose }: { onPick: (d: Date) => void; onClose:
         </div>
       </div>
     </>
+  );
+}
+
+// A compact formatting-toolbar button (Bold / Italic / Code / List). onMouseDown
+// preventDefault keeps the textarea's selection from collapsing before the
+// handler runs.
+function FormatButton({
+  onClick,
+  label,
+  children,
+}: {
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="flex h-6 w-6 items-center justify-center rounded text-[var(--color-ink-soft)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)]"
+    >
+      {children}
+    </button>
   );
 }
