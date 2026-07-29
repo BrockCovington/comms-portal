@@ -16,6 +16,7 @@
     "@auth/prisma-adapter": "2.11.2",
     "@livekit/components-react": "^2.9.21",
     "@livekit/krisp-noise-filter": "^0.3.4",
+    "@livekit/track-processors": "^0.7.2",
     "@prisma/client": "6.19.3",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",

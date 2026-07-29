@@ -13,6 +13,7 @@ import {
   ParticipantEvent,
   Track,
   type LocalAudioTrack,
+  type LocalVideoTrack,
   type LocalParticipant,
   type LocalTrackPublication,
   type Participant,
@@ -96,6 +97,58 @@ function useNoiseFilter(localParticipant: LocalParticipant) {
   }
 
   return { supported, enabled, setEnabled };
+}
+
+// Background blur on the local camera, applied as a LiveKit video track
+// processor (@livekit/track-processors — MediaPipe segmentation, client-side).
+// Same dynamic-import + LocalTrackPublished-listener rationale as the noise
+// filter above: the package + model are heavy, and the camera track is
+// re-published on device switch. Unlike Krisp there's no setEnabled — the
+// processor is attached (setProcessor) or removed (stopProcessor), so toggling
+// blur off detaches it and reverts to the raw camera.
+function useBackgroundBlur(localParticipant: LocalParticipant) {
+  const [supported, setSupported] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+  const enabledRef = useRef(false);
+  enabledRef.current = enabled;
+
+  useEffect(() => {
+    let cancelled = false;
+    import("@livekit/track-processors").then(({ supportsBackgroundProcessors }) => {
+      if (!cancelled && supportsBackgroundProcessors()) setSupported(true);
+    });
+    const onPublished = (pub: LocalTrackPublication) => {
+      if (pub.source === Track.Source.Camera && pub.track && enabledRef.current) {
+        applyBlur(pub.track as LocalVideoTrack, true);
+      }
+    };
+    localParticipant.on(ParticipantEvent.LocalTrackPublished, onPublished);
+    return () => {
+      cancelled = true;
+      localParticipant.off(ParticipantEvent.LocalTrackPublished, onPublished);
+    };
+  }, [localParticipant]);
+
+  async function applyBlur(track: LocalVideoTrack, on: boolean) {
+    try {
+      if (on) {
+        const { BackgroundBlur } = await import("@livekit/track-processors");
+        await track.setProcessor(BackgroundBlur(15));
+      } else {
+        await track.stopProcessor();
+      }
+    } catch (err) {
+      console.warn("Background blur failed:", err);
+    }
+  }
+
+  function toggle(next: boolean) {
+    setEnabled(next);
+    const pub = localParticipant.getTrackPublication(Track.Source.Camera);
+    if (pub?.track) applyBlur(pub.track as LocalVideoTrack, next);
+  }
+
+  return { supported, enabled, toggle };
 }
 
 const TILE_SIZE_MIN = 96;
@@ -430,6 +483,7 @@ export function HuddleControls({
   const { localParticipant, isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled } =
     useLocalParticipant();
   const noiseFilter = useNoiseFilter(localParticipant);
+  const bgBlur = useBackgroundBlur(localParticipant);
   const cameraTracks = useTracks([Track.Source.Camera], { onlySubscribed: true });
   const screenTracks = useTracks([Track.Source.ScreenShare], { onlySubscribed: true });
 
@@ -558,6 +612,16 @@ export function HuddleControls({
                     Camera
                   </p>
                   <MediaDeviceSelect kind="videoinput" className="text-sm" />
+                  {bgBlur.supported && (
+                    <label className="mt-2 flex items-center gap-2 px-1 text-sm text-[var(--color-ink)]">
+                      <input
+                        type="checkbox"
+                        checked={bgBlur.enabled}
+                        onChange={(e) => bgBlur.toggle(e.target.checked)}
+                      />
+                      Blur my background
+                    </label>
+                  )}
                 </div>
               </>
             )}
