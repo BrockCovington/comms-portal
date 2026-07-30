@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { minutesToHHMM, hhmmToMinutes } from "@/lib/quietHours";
+import { useWebPush } from "@/hooks/useWebPush";
 
 type Prefs = {
   dndUntil: string | null;
@@ -63,6 +64,7 @@ export function NotificationPrefsPanel({ onClose }: { onClose: () => void }) {
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [keywordInput, setKeywordInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const push = useWebPush();
 
   useEffect(() => {
     fetch("/api/notification-preferences", { cache: "no-store" })
@@ -122,7 +124,29 @@ export function NotificationPrefsPanel({ onClose }: { onClose: () => void }) {
       <div className="fixed bottom-4 left-[5.5rem] z-50 w-72 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-3 text-[var(--color-ink)] shadow-lg">
         <h3 className="text-sm font-semibold">Notifications</h3>
 
-        <div className="mt-3">
+        {push.supported && (
+          <div className="mt-3">
+            <label className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
+                Push on this device
+              </span>
+              <input
+                type="checkbox"
+                checked={push.enabled}
+                onChange={(e) => (e.target.checked ? push.enable() : push.disable())}
+                disabled={push.busy}
+                className="h-4 w-4"
+              />
+            </label>
+            <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
+              {push.permission === "denied"
+                ? "Notifications are blocked in your browser settings — enable them there first."
+                : "Get browser notifications for mentions and DMs, even when this tab is closed."}
+            </p>
+          </div>
+        )}
+
+        <div className="mt-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
             Do Not Disturb
           </p>

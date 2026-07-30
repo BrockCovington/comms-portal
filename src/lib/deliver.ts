@@ -4,6 +4,7 @@ import { encryptMessage } from "@/lib/crypto";
 import { pusherServer, pusherChannelName, userChannelName } from "@/lib/pusher";
 import { extractFirstUrl, fetchLinkPreview } from "@/lib/unfurl";
 import { isQuietNow } from "@/lib/quietHours";
+import { sendWebPushToUsers } from "@/lib/webpush";
 import type { NotificationType } from "@prisma/client";
 
 // ---------------------------------------------------------------------------
@@ -304,6 +305,29 @@ export async function deliverMessage(input: DeliverInput): Promise<{ message: De
       );
     } catch (err) {
       console.error("Notification broadcast failed:", err);
+    }
+
+    // Browser push to the same recipients that got a live push (DND / quiet
+    // hours suppress it identically). Runs via after() so a slow push service
+    // never delays the send response, and web push itself is best-effort.
+    const pushTargets = notifications
+      .filter((n) => !dndUserIds.has(n.userId))
+      .map((n) => n.userId);
+    if (pushTargets.length > 0) {
+      const deepLink = parentId
+        ? `/c/${channelId}?thread=${parentId}&message=${created.id}`
+        : `/c/${channelId}?message=${created.id}`;
+      const title = channel.isDm ? actorName : `#${channel.name}`;
+      const pushBody = channel.isDm ? preview : `${actorName}: ${preview}`;
+      after(() =>
+        sendWebPushToUsers(pushTargets, {
+          title,
+          body: pushBody,
+          url: deepLink,
+          // Collapse repeat pushes about the same conversation into one.
+          tag: parentId ? `${channelId}:${parentId}` : channelId,
+        })
+      );
     }
   }
 

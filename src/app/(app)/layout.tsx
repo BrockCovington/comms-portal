@@ -8,6 +8,7 @@ import { IconRail } from "@/components/IconRail";
 import { QuickSwitcher } from "@/components/QuickSwitcher";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { NotificationToasts } from "@/components/NotificationToasts";
+import { PushRegistrar } from "@/components/PushRegistrar";
 import { IncomingHuddle } from "@/components/IncomingHuddle";
 import { HuddleProvider } from "@/components/HuddleProvider";
 import { CustomEmojiProvider } from "@/components/CustomEmojiContext";
@@ -97,6 +98,7 @@ export default async function AppLayout({
         <KeyboardShortcuts />
         <NotificationToasts currentUserId={userId} />
         <IncomingHuddle currentUserId={userId} />
+        <PushRegistrar />
       </HuddleProvider>
       </QuickReactionsProvider>
       </PresenceProvider>
