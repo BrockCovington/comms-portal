@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { otherMemberLabel } from "@/lib/dm";
 
@@ -8,6 +9,10 @@ export type ChannelWithUnread = {
   isDm: boolean;
   archivedAt: Date | null;
   hasUnread: boolean;
+  // Number of unread messages (by others, since this user's last read). 0 for
+  // muted channels. hasUnread is exactly unreadCount > 0 — they're derived from
+  // the same set, so the bold/dot and the numeric badge never disagree.
+  unreadCount: number;
   isStarred: boolean;
   muted: boolean;
   // Custom sidebar section this user filed the channel under (null = default).
@@ -40,22 +45,24 @@ export async function getChannelsWithUnread(userId: string): Promise<ChannelWith
     orderBy: [{ isDm: "asc" }, { name: "asc" }],
   });
 
-  // Unread state: one extra grouped query for the latest message per visible
-  // channel, one for this user's read receipts, diffed in memory — same
-  // "grouped query, not N+1" pattern used for thread previews. Starred
-  // state is a third, similarly cheap lookup.
+  // Unread counts: one raw query counts, per channel, the messages by *other*
+  // people since this user's ChannelRead.lastReadAt (or all of them if never
+  // read). Per-channel thresholds vary, so a single groupBy can't express it —
+  // hence raw SQL with a LEFT JOIN, backed by the ([channelId, createdAt])
+  // index. Starred + prefs are two more cheap lookups.
   const channelIds = channels.map((c) => c.id);
-  const [lastMessageRows, readRows, starredRows, prefRows] = channelIds.length
+  const [unreadRows, starredRows, prefRows] = channelIds.length
     ? await Promise.all([
-        prisma.message.groupBy({
-          by: ["channelId"],
-          where: { channelId: { in: channelIds } },
-          _max: { createdAt: true },
-        }),
-        prisma.channelRead.findMany({
-          where: { userId, channelId: { in: channelIds } },
-          select: { channelId: true, lastReadAt: true },
-        }),
+        prisma.$queryRaw<{ channelId: string; count: bigint }[]>(Prisma.sql`
+          SELECT m."channelId" AS "channelId", COUNT(*) AS "count"
+          FROM "Message" m
+          LEFT JOIN "ChannelRead" cr
+            ON cr."channelId" = m."channelId" AND cr."userId" = ${userId}
+          WHERE m."channelId" IN (${Prisma.join(channelIds)})
+            AND m."userId" <> ${userId}
+            AND (cr."lastReadAt" IS NULL OR m."createdAt" > cr."lastReadAt")
+          GROUP BY m."channelId"
+        `),
         prisma.starredChannel.findMany({
           where: { userId, channelId: { in: channelIds } },
           select: { channelId: true },
@@ -66,27 +73,25 @@ export async function getChannelsWithUnread(userId: string): Promise<ChannelWith
           select: { channelId: true, muted: true, sectionId: true },
         }),
       ])
-    : [[], [], [], []];
-  const lastMessageAtByChannel = new Map(
-    lastMessageRows.map((r) => [r.channelId, r._max.createdAt])
-  );
-  const lastReadAtByChannel = new Map(readRows.map((r) => [r.channelId, r.lastReadAt]));
+    : [[], [], []];
+  // COUNT(*) comes back as a bigint; coerce to a JS number.
+  const unreadCountByChannel = new Map(unreadRows.map((r) => [r.channelId, Number(r.count)]));
   const starredChannelIds = new Set(starredRows.map((r) => r.channelId));
   const mutedChannelIds = new Set(prefRows.filter((p) => p.muted).map((p) => p.channelId));
   const sectionIdByChannel = new Map(prefRows.map((p) => [p.channelId, p.sectionId]));
 
   return channels
     .map(({ members, ...c }) => {
-      const lastMessageAt = lastMessageAtByChannel.get(c.id);
-      const lastReadAt = lastReadAtByChannel.get(c.id);
       const muted = mutedChannelIds.has(c.id);
+      // A muted channel never shows an unread dot/count (Slack behavior).
+      const unreadCount = muted ? 0 : unreadCountByChannel.get(c.id) ?? 0;
       return {
         ...c,
         // A DM's stored name is a fixed debug label, never rendered — each
         // viewer sees the other member's name instead.
         name: c.isDm ? otherMemberLabel(members, userId) : c.name,
-        // A muted channel never shows an unread dot (Slack behavior).
-        hasUnread: !muted && !!lastMessageAt && (!lastReadAt || lastMessageAt > lastReadAt),
+        hasUnread: unreadCount > 0,
+        unreadCount,
         isStarred: starredChannelIds.has(c.id),
         muted,
         sectionId: sectionIdByChannel.get(c.id) ?? null,

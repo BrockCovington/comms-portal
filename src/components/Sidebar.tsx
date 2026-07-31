@@ -30,6 +30,7 @@ type Channel = {
   isPrivate: boolean;
   isDm: boolean;
   hasUnread: boolean;
+  unreadCount?: number;
   isStarred?: boolean;
   muted?: boolean;
   archivedAt?: string | Date | null;
@@ -89,10 +90,20 @@ export function Sidebar({
               ? "activity"
               : null;
 
-  // Live unread flags from Pusher, layered on top of the server-computed
-  // `hasUnread` from page load. A Set (not per-channel state) keeps this to
-  // one re-render per event regardless of channel count.
-  const [liveUnread, setLiveUnread] = useState<Set<string>>(new Set());
+  // Live unread *counts* from Pusher, layered on top of the server-computed
+  // `unreadCount` from page load: this map holds only the messages that have
+  // arrived since load, per channel. Displayed count = server base + this.
+  const [liveExtra, setLiveExtra] = useState<Map<string, number>>(new Map());
+
+  // Reset the live deltas whenever the server sends fresh unread numbers (a
+  // router.refresh / navigation): the new base already includes everything up
+  // to that point, so keeping the old deltas would double-count. Keyed on a
+  // signature of the server counts so a mere live-delta change (which doesn't
+  // touch `channels`) doesn't trigger a reset.
+  const unreadSignature = channels.map((c) => `${c.id}:${c.unreadCount ?? 0}`).join("|");
+  useEffect(() => {
+    setLiveExtra(new Map());
+  }, [unreadSignature]);
 
   // Live huddle presence per channel (channelId -> participants). Seeded once
   // from a workspace-wide snapshot (so a huddle already running at page load
@@ -121,13 +132,13 @@ export function Sidebar({
   const activeChannelIdRef = useRef(activeChannelId);
   useEffect(() => {
     activeChannelIdRef.current = activeChannelId;
-    // Visiting a channel clears any live-unread flag we'd set for it —
+    // Visiting a channel clears any live-unread count we'd accrued for it —
     // useMessages' mark-channel-read call is the authoritative clear;
-    // this just keeps the sidebar from flashing a stale dot.
+    // this just keeps the sidebar from flashing a stale badge.
     if (activeChannelId) {
-      setLiveUnread((prev) => {
+      setLiveExtra((prev) => {
         if (!prev.has(activeChannelId)) return prev;
-        const next = new Set(prev);
+        const next = new Map(prev);
         next.delete(activeChannelId);
         return next;
       });
@@ -151,10 +162,20 @@ export function Sidebar({
     const names = ids.map(pusherChannelName);
     const boundChannels = names.map((name) => subscribeChannel(name));
 
-    const onActivity = (payload: { message: { parentId?: string | null } }, channelId: string) => {
+    const onActivity = (
+      payload: { message: { parentId?: string | null; user?: { id: string } } },
+      channelId: string
+    ) => {
       if (channelId === activeChannelIdRef.current) return;
       if (mutedRef.current.has(channelId)) return;
-      setLiveUnread((prev) => (prev.has(channelId) ? prev : new Set(prev).add(channelId)));
+      // Your own messages never count as unread (matches the server, which
+      // excludes them, and Slack).
+      if (payload.message.user?.id === currentUserId) return;
+      setLiveExtra((prev) => {
+        const next = new Map(prev);
+        next.set(channelId, (next.get(channelId) ?? 0) + 1);
+        return next;
+      });
     };
 
     const onHuddleJoined = (p: HuddleParticipant, channelId: string) => {
@@ -177,7 +198,8 @@ export function Sidebar({
     };
 
     const handlers = ids.map((id, i) => {
-      const onMsg = (payload: { message: { parentId?: string | null } }) => onActivity(payload, id);
+      const onMsg = (payload: { message: { parentId?: string | null; user?: { id: string } } }) =>
+        onActivity(payload, id);
       const onJoined = (payload: HuddleParticipant) => onHuddleJoined(payload, id);
       const onLeft = (payload: { id: string }) => onHuddleLeft(payload, id);
       boundChannels[i].bind("new-message", onMsg);
@@ -315,13 +337,17 @@ export function Sidebar({
   const defaultChannels = regular.filter((c) => !c.sectionId || !sectionIds.has(c.sectionId));
 
   function channelLinkProps(c: Channel) {
+    const isActive = c.id === activeChannelId;
+    // Server base + live deltas since load. Muted or currently-open channels
+    // never show a count (matches the old dot behavior and Slack).
+    const count = c.muted || isActive ? 0 : (c.unreadCount ?? 0) + (liveExtra.get(c.id) ?? 0);
     return {
       href: `/c/${c.id}`,
       active: pathname === `/c/${c.id}`,
       prefix: c.isDm ? "•" : c.isPrivate ? "🔒" : "#",
       name: c.archivedAt ? `${c.name} (archived)` : c.name,
-      // Muted channels never show an unread dot, even from a live event.
-      unread: !c.muted && c.id !== activeChannelId && (c.hasUnread || liveUnread.has(c.id)),
+      unread: count > 0,
+      count,
       muted: !!c.muted,
       huddle: huddles[c.id],
       onNavigate: () => setOpen(false),
@@ -579,6 +605,7 @@ function ChannelLink({
   prefix,
   name,
   unread,
+  count,
   muted,
   huddle,
   onNavigate,
@@ -598,9 +625,7 @@ function ChannelLink({
         <span className={`min-w-0 truncate ${unread ? "font-semibold text-white" : ""}`}>{name}</span>
         <HuddleBadge participants={huddle} className="ml-auto" />
         {muted && !active && <span className={huddle?.length ? "text-xs opacity-70" : "ml-auto text-xs opacity-70"}>🔕</span>}
-        {unread && (
-          <span className={`${huddle?.length ? "" : "ml-auto"} h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-surface)]`} />
-        )}
+        {unread && <UnreadBadge count={count} className={huddle?.length ? "" : "ml-auto"} />}
       </Link>
     </li>
   );
@@ -612,10 +637,24 @@ type ChannelLinkProps = {
   prefix: string;
   name: string;
   unread: boolean;
+  count: number;
   muted?: boolean;
   huddle?: HuddleParticipant[];
   onNavigate: () => void;
 };
+
+// The numeric unread pill shown at the end of a channel/DM row. Caps at 99+ so
+// a very busy channel doesn't blow out the row width.
+function UnreadBadge({ count, className = "" }: { count: number; className?: string }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className={`shrink-0 rounded-full bg-white px-1.5 py-px text-[11px] font-semibold leading-tight text-[var(--color-sidebar)] ${className}`}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
 
 // A collapsible sidebar group that also acts as a drag-and-drop target: drop
 // a channel onto it to file it under this section (or, for the default group,
@@ -721,7 +760,7 @@ function DraggableChannelRow({
         <HuddleBadge participants={link.huddle} className="ml-auto group-hover/row:hidden" />
         {link.muted && !link.active && <span className={`${link.huddle?.length ? "" : "ml-auto"} text-xs opacity-70`}>🔕</span>}
         {link.unread && !link.active && (
-          <span className={`${link.huddle?.length ? "" : "ml-auto"} h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-surface)] group-hover/row:hidden`} />
+          <UnreadBadge count={link.count} className={`${link.huddle?.length ? "" : "ml-auto"} group-hover/row:hidden`} />
         )}
       </Link>
       <button
